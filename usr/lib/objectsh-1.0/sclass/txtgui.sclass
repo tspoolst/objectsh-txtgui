@@ -1,0 +1,2065 @@
+#!/bin/bash
+#[c]screen
+#[c]  size: grab from terminal
+#[c]  handle all Key/Mouse Events
+#[c]    button events happen either on the screen or in a window
+#[c]  window
+#[c]    button
+#[c]    slider
+#[c]    filebrowser
+#[c]
+#[c]set call functions
+#[c]
+#[c]function screen.addElement window
+#[c]function screen.delElement id
+#[c]function screen.set/getElementSize id l w
+#[c]  Size lxw
+#[c]  PositionRel %Xx%Y
+#[c]  PositionAbsolute XxY
+#[c]  
+#[c]function window.add button/slider/filebrowser
+#[c]
+#[c]screen.add button buttonID
+#[c]screen.add slider sliderID
+#[c]
+#[c]get set
+#[c]  Size lxw
+#[c]  PositionRel %Xx%Y
+#[c]  PositionAbsolute XxY
+#[c]  Title 
+#[c]get
+#[c]  ID
+#[c]
+
+#[of]:screen
+#[of]:static methods
+#[of]:function screen.staticconstructor {
+function screen.staticconstructor {
+#[of]:  function screen.open {
+function screen.open {
+#[c]object -|var
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}key ${omv}mouse
+    typeset ${omv}mouseEvent ${omv}mouseEvents ${omv}mouseButtonId ${omv}mouseButtonName
+    typeset ${omv}mouseXStart ${omv}mouseYStart ${omv}mouseX ${omv}mouseY
+    typeset ${omv}currentRelX ${omv}currentRelY ${omv}relX ${omv}relY
+    typeset ${omv}mouseButtonState ${omv}shift ${omv}alt ${omv}ctrl
+    typeset ${omv}objectName ${omv}objectId
+
+
+    ${c}.calcscreensize
+    ${o}.focusListBuild
+    ${o}.focusTriggerEnterEvent
+    ${o}.refresh
+    ${c}.mouseEnable -d
+#[of]:    key process loop
+    while {
+        #echo ${q}waiting for input${q}
+        ((${ov}flagExitScreen)) && break
+        read -s -N 1 -r ${d}{${ov}keytimeout:+-t ${d}{${ov}keytimeout}} ${omv}key ; :
+      } ; do
+      case ${q}${d}{${omv}key}${q} in
+#[of]:        escaped keys
+        ${d}'\e')
+          read -s -N 2 -r -t .1 ${omv}key || {
+#[of]:            esc
+#[c]            esc itself is just a single char
+#[c]            if read timeout is reached the key must be esc
+            ${omv}key=esc
+            ${ov}inputEventActions.getkey ! ${q}${d}{${omv}key}${q} && ${omv}objectName=${o} || ${omv}objectName=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
+            ${o}.processEvent \
+              ${q}${d}{${omv}objectName}${q} \
+              ${q}${d}{${omv}key}${q} \
+              0 0 \
+              0 0 || \
+            echo ${q}ascii ---${d}{${omv}key}---esc---${d}{${omv}objectName:-${o}}${q}
+            continue
+#[cf]
+          }
+          [[ ${q}${d}{${omv}key}${q} == '[1' ]] && read -s -N 3 -r -t .1 ${omv}key
+          case ${q}${d}{${omv}key}${q} in
+#[of]:            mouse
+            '[<')
+              ${omv}mouseButtonId=${q}${q}
+              while read -s -N 1 -r ${omv}key ; do
+                [[ ${q}${d}{${omv}key}${q} == ${q};${q} ]] && break
+                ${omv}mouseButtonId=${q}${d}{${omv}mouseButtonId}${d}{${omv}key}${q}
+              done
+              ${omv}mouseX=${q}${q}
+              while read -s -N 1 -r ${omv}key ; do
+                [[ ${q}${d}{${omv}key}${q} == ${q};${q} ]] && break
+                ${omv}mouseX=${q}${d}{${omv}mouseX}${d}{${omv}key}${q}
+              done
+              ${omv}mouseY=${q}${q}
+              while read -s -N 1 -r ${omv}key ; do
+                [ -z ${q}${d}{${omv}key#[Mm]}${q} ] && break
+                ${omv}mouseY=${q}${d}{${omv}mouseY}${d}{${omv}key}${q}
+              done
+              [[ ${q}${d}{${omv}key}${q} == ${q}M${q} ]] && ${omv}mouseButtonState=${q}Down${q} || ${omv}mouseButtonState=${q}Up${q}
+              ((${omv}mouseX--))
+              ((${omv}mouseY--))
+
+#[c]left middle right scroll_Up scroll_Down
+#[c]shift alt ctrl
+
+              (( (${omv}mouseButtonId & 4 )==4  )) && ${omv}shift=${q}Shift${q} || ${omv}shift=${q}${q}
+              (( (${omv}mouseButtonId & 8 )==8  )) && ${omv}alt=${q}Alt${q}     || ${omv}alt=${q}${q}
+              (( (${omv}mouseButtonId & 16)==16 )) && ${omv}ctrl=${q}Ctrl${q}   || ${omv}ctrl=${q}${q}
+              (( (${omv}mouseButtonId & 32)==32 )) && ${omv}mouseButtonState=${q}Drag${q}
+              case ${q}${d}((${omv}mouseButtonId & 67))${q} in
+                 0) ${omv}mouseButtonName=${q}Left${q}   ;;&
+                 1) ${omv}mouseButtonName=${q}Middle${q} ;;&
+                 2) ${omv}mouseButtonName=${q}Right${q}  ;;&
+                64) ${omv}mouseButtonName=${q}Scroll${q}
+                    ${omv}mouseButtonState=${q}Up${q}    ;;
+                65) ${omv}mouseButtonName=${q}Scroll${q}
+                    ${omv}mouseButtonState=${q}Down${q}  ;;
+                 *) case ${q}${d}{${omv}mouseButtonState}${q} in
+                      Down)
+                        ${ov}previousMouseButtonName=${q}${d}{${omv}mouseButtonName}${q}
+                        ${ov}previousMouseX=${q}${d}{${omv}mouseX}${q}
+                        ${ov}previousMouseY=${q}${d}{${omv}mouseY}${q}
+                        ;;
+                      Up)
+                        [[  ${q}${d}{${ov}previousMouseButtonName}${q} = ${q}${d}{${omv}mouseButtonName}${q} &&
+                            ${q}${d}{${ov}previousMouseX}${q} = ${q}${d}{${omv}mouseX}${q} &&
+                            ${q}${d}{${ov}previousMouseY}${q} = ${q}${d}{${omv}mouseY}${q} ]] && \
+                          aunshift ${omv}mouseEvents ${q}mouse${d}{${omv}mouseButtonName}Click${d}{${omv}shift}${d}{${omv}alt}${d}{${omv}ctrl}${q}
+                        ;;
+                    esac
+                    ;;
+              esac
+              aunshift ${omv}mouseEvents ${q}mouse${d}{${omv}mouseButtonName}${d}{${omv}mouseButtonState}${d}{${omv}shift}${d}{${omv}alt}${d}{${omv}ctrl}${q}
+
+#[c]              object on screen has TOPxLEFT and WIDTHxHEIGHT
+#[c]                button Down event
+#[c]                  -if xy no longer on the current object it is a drag-drop operation
+#[c]                  setCurrentScreenObject buttonID/textBoxID/windowID/etc...
+#[c]                  screen.objectID.sendEvent mouse_Left_Down x-left y-top
+#[c]                button Up event
+#[c]                  screen.objectID.sendEvent mouse_Left_Up objectID sx-left sy-top x-left y-top
+#[c]                
+#[c]              
+#[c]              for objectID in screen_objects do
+#[c]                if top<y<top+height && left<x<left+width ; then
+#[c]                  if [[ ${q}${d}{${omv}mouseButtonName}${q} == ${q}scroll${q} || ${q}${d}{${omv}mouseButtonState}${q} == ${q}Down${q} ]] && setCurrentScreenObject=${objectID}
+#[c]                  screen.sendEvent objectID mouse_Left_Down x-left y-top
+#[c]                  break
+#[c]                fi
+#[c]              done
+
+              ${omv}relX=${d}{${omv}mouseX}
+              ${omv}relY=${d}{${omv}mouseY}
+              ${omv}objectName=${q}${q}
+              for ${omv}objectId in ${q}${d}{!${ov}objectNames[@]}${q} ; do
+                if  (( ${ov}objectPositions[4*${omv}objectId+0] <= ${omv}mouseX &&
+                    ${omv}mouseX <= ${ov}objectPositions[${d}((4*${omv}objectId+1))] &&
+                   ${ov}objectPositions[4*${omv}objectId+2] <= ${omv}mouseY &&
+                   ${omv}mouseY <= ${ov}objectPositions[4*${omv}objectId+3] ))
+                then
+                  ${omv}objectName=${q}${d}{${ov}objectNames[${d}{${omv}objectId}]}${q}
+                  ${omv}relX=${d}(( ${omv}mouseX - ${ov}objectPositions[4*${omv}objectId+0] ))
+                  ${omv}relY=${d}(( ${omv}mouseY - ${ov}objectPositions[4*${omv}objectId+2] ))
+#[c]                  echo ${q}${d}{${omv}objectName} ${d}{${ov}objectPositions[4*${omv}objectId+0]} ${d}{${ov}objectPositions[4*${omv}objectId+1]} ${d}{${ov}objectPositions[4*${omv}objectId+2]} ${d}{${ov}objectPositions[4*${omv}objectId+3]}${q}
+                  break
+                fi
+              done
+
+#[c]###write some code that disables event actions and just shows mouse events
+#[c]###be sure the code shows screen object calls as well
+              ((gl_debug>0)) && echo ${q}s - ${d}{!${ov}objectPositions[@]} | ${d}{${ov}objectPositions[@]} -- ${d}{${omv}objectName:-${o}} ${d}{${omv}mouseEvent} ${d}{${omv}relX} ${d}{${omv}relY} ${d}{${omv}mouseX} ${d}{${omv}mouseY}${q}
+
+              while ashift ${omv}mouseEvent ${omv}mouseEvents ; do
+                ${o}.processEvent \
+                  ${q}${d}{${omv}objectName:-${o}}${q} \
+                  ${q}${d}{${omv}mouseEvent}${q} \
+                  ${q}${d}{${omv}relX}${q} ${q}${d}{${omv}relY}${q} \
+                  ${q}${d}{${omv}mouseX}${q} ${q}${d}{${omv}mouseY}${q}
+              done
+              ;;
+#[cf]
+#[of]:            shift up)
+            '[a'|';2A')
+              ${omv}key=shiftUp
+              ;;&
+#[cf]
+#[of]:            shift down)
+            '[b'|';2B')
+              ${omv}key=shiftDown
+              ;;&
+#[cf]
+#[of]:            shift left)
+            '[d'|';2D')
+              ${omv}key=shiftLeft
+              ;;&
+#[cf]
+#[of]:            shift right)
+            '[c'|';2C')
+              ${omv}key=shiftRight
+              ;;&
+#[cf]
+#[of]:            alt up)
+            ';3A')
+              ${omv}key=altUp
+              ;;&
+#[cf]
+#[of]:            alt down)
+            ';3B')
+              ${omv}key=altDown
+              ;;&
+#[cf]
+#[of]:            alt left)
+            ';3D')
+              ${omv}key=altLeft
+              ;;&
+#[cf]
+#[of]:            alt right)
+            ';3C')
+              ${omv}key=altRight
+              ;;&
+#[cf]
+#[of]:            ctrl up)
+            ';5A')
+              ${omv}key=ctrlUp
+              ;;&
+#[cf]
+#[of]:            ctrl down)
+            ';5B')
+              ${omv}key=ctrlDown
+              ;;&
+#[cf]
+#[of]:            ctrl left)
+            ';5D')
+              ${omv}key=ctrlLeft
+              ;;&
+#[cf]
+#[of]:            ctrl right)
+            ';5C')
+              ${omv}key=ctrlRight
+              ;;&
+#[cf]
+#[of]:            up)
+            '[A')
+              ${omv}key=up
+              ;;&
+#[cf]
+#[of]:            down)
+            '[B')
+              ${omv}key=down
+              ;;&
+#[cf]
+#[of]:            left)
+            '[D')
+              ${omv}key=left
+              ;;&
+#[cf]
+#[of]:            right)
+            '[C')
+              ${omv}key=right
+              ;;&
+#[cf]
+#[of]:            shift tab)
+            '[Z')
+              ${omv}key=shiftTab
+              ;;&
+#[cf]
+#[of]:            page up)
+            '[5')
+              read -s -N 1 -r ${omv}key
+              [[ ${q}${d}{${omv}key}${q} = '~' ]] && ${omv}key=pageUp
+              ;;&
+#[cf]
+#[of]:            page down)
+            '[6')
+              read -s -N 1 -r ${omv}key
+              [[ ${q}${d}{${omv}key}${q} = '~' ]] && ${omv}key=pageDown
+              ;;&
+#[cf]
+#[of]:            *)
+            *)
+              ${ov}inputEventActions.getkey ! ${q}${d}{${omv}key}${q} && ${omv}objectName=${o} || ${omv}objectName=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
+              ${o}.processEvent \
+                ${q}${d}{${omv}objectName}${q} \
+                ${q}${d}{${omv}key}${q} \
+                0 0 \
+                0 0 || \
+              echo ${q}ascii ---${d}{${omv}key}---esc---${d}{${omv}objectName:-${o}}${q}
+              ;;
+#[cf]
+          esac
+          ;;
+#[cf]
+#[of]:        enter)
+        '
+')
+          ${omv}key=enter
+          ;;&
+#[cf]
+#[of]:        tab)
+        '	')
+          ${omv}key=tab
+          ;;&
+#[cf]
+#[of]:        refresh timeout
+        '')
+          ${o}.refresh
+          ;;
+#[cf]
+#[of]:        *)
+        *)
+          ${ov}inputEventActions.getkey ! ${q}${d}{${omv}key}${q} && ${omv}objectName=${o} || ${omv}objectName=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
+          ${o}.processEvent \
+            ${q}${d}{${omv}objectName}${q} \
+            ${q}${d}{${omv}key}${q} \
+            0 0 \
+            0 0 || \
+          echo ${q}ascii ---${d}{${omv}key}---chr---${d}{${omv}objectName:-${o}}${q}
+          ;;
+#[cf]
+      esac
+    done
+#[cf]
+    ${c}.mouseDisable
+
+    clear
+    return 0
+  "
+}
+#[cf]
+#[of]:  function screen.refresh {
+function screen.refresh {
+#[c]object -|var
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    ((gl_debug>0)) && return
+    typeset ${omv}objectId ${omv}left ${omv}top
+
+#[c]    ${o}.focusGet ${ov}focusedObjectName
+    clear
+
+    for ${omv}objectId in ${q}${d}{!${ov}objectNames[@]}${q} ; do
+    ${omv}left=${d}{${ov}objectPositions[4*${omv}objectId+0]}
+    ${omv}top=${d}{${ov}objectPositions[4*${omv}objectId+2]}
+      ${c}.setcursorxy ${q}${d}{${omv}left}${q} ${q}${d}{${omv}top}${q}
+      ${d}{${ov}objectNames[${d}{${omv}objectId}]}.refresh \
+        ${q}${d}{${omv}left}${q} ${q}${d}{${omv}top}${q} \
+        ${q}${d}{${ov}objectNames[${d}{${omv}objectId}]}${q} \
+        ${q}${d}{${ov}focusListMerged[${ov}focusedObjectIndex]}${q}
+    done
+    ${c}.setcursorxy 0 0
+
+    return 0
+  "
+}
+#[cf]
+#[of]:  function screen.bindObject {
+function screen.bindObject {
+#[c]object
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}left ${omv}top ${omv}width ${omv}height
+    typeset ${omv}objectId
+    typeset ${omv}objectName
+
+    ${omv}objectName=${q}${d}1${q}
+    ${omv}left=${q}${d}2${q}
+    ${omv}top=${q}${d}3${q}
+    ${d}{${omv}objectName}.getHeight ${omv}height
+    ${d}{${omv}objectName}.getWidth ${omv}width
+
+    ${ov}objectIdPool.getid ${omv}objectId
+
+    ${ov}objectNames[${d}{${omv}objectId}]=${q}${d}{${omv}objectName}${q}
+    ${ov}objectPositions[${d}((4*${omv}objectId+0))]=${q}${d}{${omv}left}${q}
+    ${ov}objectPositions[${d}((4*${omv}objectId+1))]=${q}${d}((${omv}left + ${omv}width-1))${q}
+    ${ov}objectPositions[${d}((4*${omv}objectId+2))]=${q}${d}{${omv}top}${q}
+    ${ov}objectPositions[${d}((4*${omv}objectId+3))]=${q}${d}((${omv}top + ${omv}height-1))${q}
+    
+    return 0
+  "
+}
+#[cf]
+#[of]:  function screen.resizeObject {
+function screen.resizeObject {
+#[c]object
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}left ${omv}top ${omv}width ${omv}height
+    typeset ${omv}objectId
+    typeset ${omv}objectName
+
+    ${omv}objectName=${q}${d}1${q}
+    ${d}{${omv}objectName}.getHeight ${omv}height
+    ${d}{${omv}objectName}.getWidth ${omv}width
+
+    for ${omv}objectId in ${q}${d}{!${ov}objectNames[@]}${q} ; do
+      if [[ ${q}${d}{${omv}objectName}${q} = ${q}${d}{${ov}objectNames[${d}{${omv}objectId}]}${q} ]] ; then
+        ${omv}left=${q}${d}{${ov}objectPositions[${d}((4*${omv}objectId+0))]}${q}
+        ${omv}top=${q}${d}{${ov}objectPositions[${d}((4*${omv}objectId+2))]}${q}
+        ${ov}objectPositions[${d}((4*${omv}objectId+1))]=${q}${d}((${omv}left + ${omv}width -1))${q}
+        ${ov}objectPositions[${d}((4*${omv}objectId+3))]=${q}${d}((${omv}top + ${omv}height -1))${q}
+        break
+      fi
+    done
+
+    return 0
+  "
+}
+#[cf]
+#[of]:  function screen.delObject {
+function screen.delObject {
+#[c]object
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}objectId
+    typeset ${omv}objectName
+
+    ${omv}objectName=${q}${d}1${q}
+
+    for ${omv}objectId in ${q}${d}{!${ov}objectNames[@]}${q} ; do
+      if [[ ${q}${d}{${omv}objectName}${q} = ${q}${d}{${ov}objectNames[${d}{${omv}objectId}]}${q} ]] ; then
+        unset ${ov}objectNames[${d}{${omv}objectId}]
+        ${ov}objectIdPool.delid ${d}{${omv}objectId}
+        break
+      fi
+    done
+
+    return 0
+  "
+}
+#[cf]
+#[of]:  function screen.processEvent {
+function screen.processEvent {
+#[c]object -|var
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}objectName ${omv}event
+    typeset ${omv}relX ${omv}relY ${omv}mouseX ${omv}mouseY
+    typeset ${omv}currentObjectName ${omv}currentRelX ${omv}currentRelY
+  
+    ${omv}objectName=${q}${d}1${q}
+    ${omv}event=${q}${d}2${q}
+    ${omv}relX=${q}${d}3${q}
+    ${omv}relY=${q}${d}4${q}
+    ${omv}mouseX=${q}${d}5${q}
+    ${omv}mouseY=${q}${d}6${q}
+
+    ${omv}currentRelX=${q}${d}{${omv}relX}${q}
+    ${omv}currentRelY=${q}${d}{${omv}relY}${q}
+    ${d}{${omv}objectName:-${o}}.getEventAction \
+      ${omv}currentObjectName ! \
+      ${omv}currentRelX ${omv}currentRelY \
+      ${q}${d}{${omv}event}${q} \
+      ${q}${d}{${omv}relX}${q} ${q}${d}{${omv}relY}${q} \
+      ${q}${d}{${omv}mouseX}${q} ${q}${d}{${omv}mouseY}${q} && {
+          if ! ((gl_debug>1)) ; then
+            ${c}.mouseDisable
+            ((gl_debug>0)) && echo ${d}{${omv}currentObjectName}.runEventAction \
+              ${q}${d}{${omv}event}${q} \
+              ${q}${d}{${omv}currentRelX}${q} ${q}${d}{${omv}currentRelY}${q} \
+              ${q}${d}{${omv}mouseX}${q} ${q}${d}{${omv}mouseY}${q}
+            ${d}{${omv}currentObjectName}.runEventAction \
+              ${q}${d}{${omv}event}${q} \
+              ${q}${d}{${omv}currentRelX}${q} ${q}${d}{${omv}currentRelY}${q} \
+              ${q}${d}{${omv}mouseX}${q} ${q}${d}{${omv}mouseY}${q}
+            #${c}.calcscreensize
+            ${o}.refresh
+            ${c}.mouseEnable -d
+          else
+            echo ${d}{${omv}currentObjectName}.runEventAction ${q}${d}{${omv}event}${q} ${d}{${omv}currentRelX} ${d}{${omv}currentRelY} ${d}{${omv}mouseX} ${d}{${omv}mouseY}
+          fi
+    }
+  "
+}
+#[cf]
+#[of]:  function screen.triggerEvent {
+function screen.triggerEvent {
+#[c]object objectname key [relX] [relY]
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    ${ov}inputEventActions.getkey ! ${q}${d}2${q} && ${omv}objectName=${o} || ${omv}objectName=${q}${d}1${q}
+    ${o}.processEvent \
+      ${q}${d}{${omv}objectName}${q} \
+      ${q}${d}2${q} \
+      0 0 || \
+    echo ${q}ascii ---${d}{${omv}key}---chr---${d}{${omv}objectName:-${o}}${q}
+  "
+}
+#[cf]
+#[of]:  function screen.runEventAction {
+function screen.runEventAction {
+#[c]object
+#[c]somehow consume ${omv}startx ${omv}starty ${omv}x ${omv}y with callout
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}objectName ${omv}action
+    if ${o}.getEventAction ${omv}objectName ${omv}action ! ! ${q}${d}1${q} ; then
+      trap ${q}echo TRAPed signal${q} INT
+      eval ${q}${d}{${omv}action}${q}
+      trap - INT
+    fi
+  "
+}
+#[cf]
+#[of]:  function screen.focusSelectByName {
+function screen.focusSelectByName {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}focusedObjectCurrent ${omv}focusedObjectNew
+    typeset ${omv}focusListKey ${omv}objectName ${omv}objectLocated
+    ${omv}objectLocated=0
+    ${omv}objectName=${q}${d}1${q}
+
+    ${o}.focusListBuild
+    ${omv}focusedObjectCurrent=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
+
+    for ${omv}focusListKey in ${q}${d}{!${ov}focusListMerged[@]}${q} ; do
+      if [[ ${q}${d}{${omv}objectName}${q} = ${q}${d}{${ov}focusListMerged[${d}{${omv}focusListKey}]##*_}${q} ]] ; then
+        ${omv}objectLocated=1
+        ${ov}focusedObjectIndex=${d}{${omv}focusListKey}
+        break
+      fi
+    done
+    if ! ((${omv}objectLocated)) ; then
+      die 1 ${q}${c}.${d}{FUNCNAME[1]##*.} -- the control object ${d}{${omv}objectName} is not in the ${o} focusList${q}
+    fi
+
+    ${omv}focusedObjectNew=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
+    
+    if [[ ${q}${d}{${omv}focusedObjectCurrent}${q} != ${q}${d}{${omv}focusedObjectNew}${q} ]] ; then
+      ${o}.processEvent ${q}${d}{${omv}focusedObjectCurrent}${q} ${q}focusExit${q} 0 0 0 0
+      ${o}.processEvent ${q}${d}{${omv}focusedObjectNew}${q} ${q}focusEnter${q} 0 0 0 0
+    fi
+  "
+}
+#[cf]
+#[of]:  function screen.focusAdd {
+function screen.focusAdd {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}objectId ${omv}objectName ${omv}objectLocated ${omv}focusListKey 
+    ${omv}objectLocated=0
+    ${omv}objectName=${q}${d}1${q}
+
+    #check if object is already in the focus list    
+    for ${omv}focusListKey in ${q}${d}{${ov}focusList[@]}${q} ; do
+      if [[ ${q}${d}{${omv}objectName}${q} = ${q}${d}{${ov}objectNames[${d}{${omv}focusListKey}]}${q} ]] ; then
+        return 0
+      fi
+    done
+
+    for ${omv}objectId in ${q}${d}{!${ov}objectNames[@]}${q} ; do
+      if [[ ${q}${d}{${omv}objectName}${q} = ${q}${d}{${ov}objectNames[${d}{${omv}objectId}]}${q} ]] ; then
+        ${omv}objectLocated=1
+        break
+      fi
+    done
+    if ((${omv}objectLocated)) ; then
+      apush ${ov}focusList ${q}${d}{${omv}objectId}${q}
+    else
+      die 1 ${q}${c}.${d}{FUNCNAME[1]##*.} -- the control object ${d}{${omv}objectName} is not bound to ${o}${q}
+    fi
+  "
+}
+#[cf]
+#[of]:  function screen.focusListBuild {
+function screen.focusListBuild {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}objectId ${omv}objectName ${omv}focusListKey ${omv}focusList
+    unset ${ov}focusListMerged
+
+    for ${omv}focusListKey in ${q}${d}{${ov}focusList[@]}${q} ; do
+      ${omv}objectName=${q}${d}{${ov}objectNames[${d}{${omv}focusListKey}]}${q}
+      if isfnset ${d}{${omv}objectName}.focusList ; then
+        ${d}{${omv}objectName}.focusList ${omv}focusList ${q}${d}{${omv}objectName}${q}
+        apush ${ov}focusListMerged ${q}${d}{${omv}focusList[@]}${q}
+      else
+        apush ${ov}focusListMerged ${q}${d}{${omv}objectName}${q}
+      fi
+    done
+  "
+}
+#[cf]
+#[of]:  function screen.focusDel {
+function screen.focusDel {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    ((${d}{#${ov}focusList[@]})) || return
+    typeset ${omv}focusListKey ${omv}objectName ${omv}objectLocated
+    ${omv}objectName=${q}${d}1${q}
+    
+    for ${omv}focusListKey in ${q}${d}{!${ov}focusList[@]}${q} ; do
+      if [[ ${q}${d}{${omv}objectName}${q} = ${q}${d}{${ov}objectNames[${d}{${omv}focusListKey}]##*_}${q} ]] ; then
+        unset ${ov}focusList[${d}{${omv}focusListKey}]
+        ${ov}focusList=( ${q}${d}{${ov}focusList[@]}${q} )
+        break
+      fi
+    done
+  "
+}
+#[cf]
+#[of]:  function screen.focusTriggerEnterEvent {
+function screen.focusTriggerEnterEvent {
+#[c]
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    ((${d}{#${ov}focusList[@]})) || return 0
+
+    typeset ${omv}objectName
+    ${omv}objectName=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
+    ${o}.processEvent ${q}${d}{${omv}objectName}${q} ${q}focusEnter${q} 0 0 0 0
+  "
+}
+#[cf]
+#[of]:  function screen.focusTriggerExitEvent {
+function screen.focusTriggerExitEvent {
+#[c]
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    ((${d}{#${ov}focusList[@]})) || return 0
+
+    typeset ${omv}objectName
+    ${omv}objectName=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
+    ${o}.processEvent ${q}${d}{${omv}objectName}${q} ${q}focusExit${q} 0 0 0 0
+  "
+}
+#[cf]
+#[of]:  function screen.focusNext {
+function screen.focusNext {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    ((${d}{#${ov}focusList[@]})) || return 1
+
+    typeset ${omv}focusedObjectCurrent ${omv}focusedObjectNew ${omv}objectName
+
+    ${omv}focusedObjectCurrent=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
+
+    if ((${ov}focusedObjectIndex>=${d}{#${ov}focusListMerged[@]}-1)) ; then
+      ${ov}focusedObjectIndex=0
+    else
+      ((${ov}focusedObjectIndex++))
+    fi
+
+    ${omv}focusedObjectNew=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
+    
+    if [[ ${q}${d}{${omv}focusedObjectCurrent}${q} != ${q}${d}{${omv}focusedObjectNew}${q} ]] ; then
+      ${o}.processEvent ${q}${d}{${omv}focusedObjectCurrent}${q} ${q}focusExit${q} 0 0 0 0
+      ${o}.processEvent ${q}${d}{${omv}focusedObjectNew}${q} ${q}focusEnter${q} 0 0 0 0
+    fi
+  "
+}
+#[c]
+#[c]
+#[c]focus needs to be by tree connection not by object name
+#[c]screen + window need to tell the object it has focus on render
+#[c]
+#[c]crawl the tree and gather object IDs
+#[c]how to represent this? rest-ish
+#[c]
+#[c]
+#[c]
+#[c]if currenly focused object is a window
+#[c]  call w.finc || f.inc
+#[c]
+#[c]
+#[c]s1 ---\------1-fb--1-fb
+#[c]       \ 
+#[c]        \----2-pl--\--1-cl--\-----1-b1
+#[c]         \          \-2-bf   \----2-b2
+#[c]          \                   \---3-b3
+#[c]           \-3-lb--1-b1        \--4-b4
+#[c]                                \-5-sl
+#[c]
+#[c]1-1
+#[c]2-1-1
+#[c]2-1-2
+#[c]2-1-3
+#[c]2-1-4
+#[c]2-1-5
+#[c]2-2
+#[c]3-1
+#[c]
+#[c]
+#[c]
+#[c]s1.focusAdd mediaPlayerBox
+#[c]  mediaPlayerBox.focusAdd playerControls
+#[c]    playerControls.focusAdd mediaPlayerButton1
+#[c]  mediaPlayerBox.focusAdd bf
+#[c]
+#[c]a 0
+#[c]b 0
+#[c]a 1
+#[c]b 0
+#[c]a 1
+#[cf]
+#[of]:  function screen.focusPrevious {
+function screen.focusPrevious {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    ((${d}{#${ov}focusList[@]})) || return 1
+
+    typeset ${omv}focusedObjectCurrent ${omv}focusedObjectNew ${omv}objectName
+
+    ${omv}focusedObjectCurrent=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
+
+    if ((${ov}focusedObjectIndex==0)) ; then
+      ((${ov}focusedObjectIndex=${d}{#${ov}focusListMerged[@]}-1))
+    else
+      ((${ov}focusedObjectIndex--))
+    fi
+
+    ${omv}focusedObjectNew=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
+
+    if [[ ${q}${d}{${omv}focusedObjectCurrent}${q} != ${q}${d}{${omv}focusedObjectNew}${q} ]] ; then
+      ${o}.processEvent ${q}${d}{${omv}focusedObjectCurrent}${q} ${q}focusExit${q} 0 0 0 0
+      ${o}.processEvent ${q}${d}{${omv}focusedObjectNew}${q} ${q}focusEnter${q} 0 0 0 0
+    fi
+  "
+}
+#[cf]
+}
+#[cf]
+#[cf]
+#[of]:class methods
+#[of]:function screen.classconstructor {
+function screen.classconstructor {
+#[c]object
+#[of]:  includes
+  include hash
+  include referenceid
+#[cf]
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+#[of]:    function ${c}.calcscreensize {
+function ${c}.calcscreensize {
+  set -- ${d}(stty size 2>/dev/null)
+  ${cv}height=${d}1
+  ${cv}width=${d}2
+  [[ -z ${q}${d}{${cv}height}${q} ]] && {
+    ${cv}height=24
+    ${cv}width=80
+  }
+#[c]  echo ${d}{${cv}height} ${d}{${cv}width}
+#[c]  read -n 1
+  return 0
+}
+#[cf]
+#[of]:    function ${c}.setScreenHeight {
+function ${c}.setScreenHeight {
+  #to get the resize command
+  #sudo apt install xterm
+  typeset ${cmv}height
+  
+  if isset TERM && [[ -z "${d}{TERM##xterm*}" ]] && which resize &>/dev/null ; then
+    ${cmv}height=${d}1
+    resize -s ${d}{${cmv}height} ${d}{${cv}width} &>/dev/null || return 1
+    ${cv}height=${d}{${cmv}height}
+  else
+    return 1
+  fi
+  return 0
+}
+#[cf]
+#[of]:    function ${c}.setScreenWidth {
+function ${c}.setScreenWidth {
+  #to get the resize command
+  #sudo apt install xterm
+  typeset ${cmv}width
+
+  if isset TERM && [[ -z "${d}{TERM##xterm*}" ]] && which resize &>/dev/null ; then
+    ${cmv}width=${d}1
+    resize -s ${d}{${cv}height} ${d}{${cmv}width} &>/dev/null || return 1
+    ${cv}width=${d}{${cmv}width}
+  else
+    return 1
+  fi
+  return 0
+}
+#[cf]
+#[of]:    function ${c}.setcursorxy {
+function ${c}.setcursorxy {
+  typeset ${cmv}x ${cmv}y
+  ${cmv}x=${d}1
+  ${cmv}y=${d}2
+  echo -en ${q}\\\\033[${d}((${cmv}y+1));${d}((${cmv}x+1))H${q}
+  return 0
+}
+#[cf]
+#[of]:    function ${c}.mouseEnable {
+function ${c}.mouseEnable {
+  stty -echo
+  if [[ ${q}${d}1${q} == ${q}-d${q} ]] ; then
+    echo -en '\e[?1002;1006;1015h'
+  else
+    echo -en '\e[?1000;1006;1015h'
+  fi
+}
+#[cf]
+#[of]:    function ${c}.mouseDisable {
+function ${c}.mouseDisable {
+  stty echo
+  echo -en '\e[?1000;1001;1002;1003;1006;1015l'
+}
+#[cf]
+#[of]:    function ${c}.styleSetReverse {
+function ${c}.styleSetReverse {
+  echo -en ${q}\\033[7m${q}
+}
+#[cf]
+#[of]:    function ${c}.styleSetNormal {
+function ${c}.styleSetNormal {
+  echo -en ${q}\\033[0m${q}
+}
+#[cf]
+#[of]:    function ${c}.trimString {
+function ${c}.trimString {
+  typeset _s
+  _s=${q}${d}3${q}
+  while ((${d}(wc -L <<< ${q}${d}{_s}${q})>${d}{2}));do _s=${q}${d}{_s%?}${q};done
+  eval ${d}1=\\${q}\\${d}{_s}\\${q}
+}
+#[cf]
+#[of]:    function ${c}.stringLength {
+function ${c}.stringLength {
+  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+    echo ${d}(wc -L <<< ${q}${d}2${q})
+  else
+    eval ${q}${d}1=\\${d}(wc -L <<< \\${q}\\${d}2\\${q})${q}
+  fi
+}
+#[cf]
+#[of]:    class data
+newvar ${cv}height ${cv}width
+#[cf]
+    ${c}.calcscreensize
+  "
+}
+#[cf]
+#[cf]
+#[of]:dynamic methods
+#[of]:function screen.constructor {
+function screen.constructor {
+#[c]object
+#[of]:set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  #echo constructing object ${o} of class ${c}
+  eval "
+#[of]:    function ${o}.bindEventAction {
+function ${o}.bindEventAction {
+  typeset i
+  for i in ${q}${d}{@:1:${d}#-1}${q} ; do
+    ${ov}inputEventActions.setkey ${q}${d}{i}${q} ${q}${d}{@: -1}${q}
+  done
+}
+#[cf]
+#[of]:    function ${o}.getEventAction {
+function ${o}.getEventAction {
+  [[ ${q}${d}1${q} != ${q}!${q} ]] && eval ${d}1=\\${q}${o}\\${q}
+  ${ov}inputEventActions.getkey ${q}${d}2${q} ${q}${d}5${q}
+}
+#[cf]
+#[of]:    function ${o}.delEventAction {
+function ${o}.delEventAction {
+  ${ov}inputEventActions.delkey ${q}${d}1${q}
+}
+#[cf]
+#[of]:    function ${o}.getHeight {
+function ${o}.getHeight {
+  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+    echo ${q}${d}{${cv}height}${q}
+  else
+    eval ${d}1=\\${q}\\${d}{${cv}height}\\${q}
+  fi
+}
+#[cf]
+#[of]:    function ${o}.getWidth {
+function ${o}.getWidth {
+  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+    echo ${q}${d}{${cv}width}${q}
+  else
+    eval ${d}1=\\${q}\\${d}{${cv}width}\\${q}
+  fi
+}
+#[cf]
+#[of]:    function ${o}.setRefreshTimeout {
+function ${o}.setRefreshTimeout {
+  if [[ -z ${q}${d}1${q} || ${q}${d}1${q} = 0 ]] ; then
+    ${ov}keytimeout=${q}${q}
+  else
+    ${ov}keytimeout=${q}${d}1${q}
+  fi
+}
+#[cf]
+#[of]:    function ${o}.exitScreen {
+function ${o}.exitScreen {
+  ${ov}flagExitScreen=1
+}
+#[cf]
+#[of]:    function ${o}.disableRefreshTimeout {
+function ${o}.disableRefreshTimeout {
+  ${ov}keytimeout=${q}${q}
+}
+#[cf]
+#[of]:    object data
+newvar ${ov}objectPositions ${ov}objectNames
+newvar ${ov}previousMouseButtonName ${ov}previousMouseX ${ov}previousMouseY
+newvar ${ov}focusedObjectIndex ${ov}focusedObjectName ${ov}focusList ${ov}focusListMerged
+newvar ${ov}keytimeout
+newvar ${ov}flagExitScreen
+
+new hash ${ov}objects
+new hash ${ov}inputEventActions
+new referenceid ${ov}objectIdPool
+
+${ov}flagExitScreen=0
+${ov}keytimeout=${q}${q}
+${ov}focusedObjectIndex=0
+
+#[cf]
+  "
+}
+#[cf]
+#[cf]
+#[cf]
+#[of]:window
+#[of]:static methods
+#[of]:function window.staticconstructor {
+function window.staticconstructor {
+#[of]:  function window.drawBorder {
+function window.drawBorder {
+#[c]object -|var
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}line  ${omv}h ${omv}v  ${omv}tl_br ${omv}tr_bl
+    case ${q}${d}{${ov}borderStyle}${q} in
+      1)
+        ${omv}h='-'
+        ${omv}v='|'
+        ${omv}tl_br='/'
+        ${omv}tr_bl='\'
+        ;;
+      *)
+        ${omv}h='*'
+        ${omv}v='*'
+        ${omv}tl_br='*'
+        ${omv}tr_bl='*'
+        ;;
+    esac
+
+    ${o}.setcursorxy 0 0
+    printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tl_br}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tr_bl}${q}
+
+    ${o}.setcursorxy 0 1
+    printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
+    ${o}.setcursorxy ${d}((${ov}width-1)) 1
+    printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
+
+    ${o}.setcursorxy 0 ${d}((${ov}height-1))
+    printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tr_bl}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tl_br}${q}
+
+    return 0
+  "
+}
+#[cf]
+#[of]:  function window.refresh {
+function window.refresh {
+#[c]object -|var
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}objectId ${omv}left ${omv}top ${omv}width ${omv}height ${omv}parentFocusKey
+    ${ov}leftOffset=${q}${d}1${q}
+    ${ov}topOffset=${q}${d}2${q}
+    ${omv}parentFocusKey=${q}${d}3${q}
+    ${omv}focusedObject=${q}${d}4${q}
+    
+
+    ((${ov}drawBorder)) && ${o}.drawBorder
+
+    for ${omv}objectId in ${q}${d}{!${ov}objectNames[@]}${q} ; do
+      ${omv}left=${d}{${ov}objectPositions[4*${omv}objectId+0]}
+      ${omv}top=${d}{${ov}objectPositions[4*${omv}objectId+2]}
+      ${d}{${ov}objectNames[${d}{${omv}objectId}]}.getWidth ${omv}width
+      ${d}{${ov}objectNames[${d}{${omv}objectId}]}.getHeight ${omv}height
+      if (( (${omv}left+${omv}width) > ${ov}width || (${omv}top+${omv}height) > ${ov}height )) ; then
+        die 1 ${q}${d}{${ov}objectNames[${d}{${omv}objectId}]} is out of bounds of ${o}${q}
+      fi
+
+      ${o}.setcursorxy ${q}${d}{${omv}left}${q} ${q}${d}{${omv}top}${q}
+      ${d}{${ov}objectNames[${d}{${omv}objectId}]}.refresh \
+        ${q}${d}((${ov}leftOffset+${omv}left))${q} \
+        ${q}${d}((${ov}topOffset+${omv}top))${q} \
+        ${q}${d}{${omv}parentFocusKey}_${d}{${ov}objectNames[${d}{${omv}objectId}]}${q} \
+        ${q}${d}{${omv}focusedObject}${q}
+    done
+    ${o}.setcursorxy 1 1
+
+    return 0
+  "
+}
+#[cf]
+#[of]:  function window.bindObject {
+function window.bindObject {
+#[c]object
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}left ${omv}top ${omv}width ${omv}height
+    typeset ${omv}objectId
+    typeset ${omv}objectName
+
+    ${omv}objectName=${q}${d}1${q}
+    ${omv}left=${q}${d}2${q}
+    ${omv}top=${q}${d}3${q}
+    ${d}{${omv}objectName}.getHeight ${omv}height
+    ${d}{${omv}objectName}.getWidth ${omv}width
+
+    ${ov}objectIdPool.getid ${omv}objectId
+
+    ${ov}objectNames[${d}{${omv}objectId}]=${q}${d}{${omv}objectName}${q}
+    ${ov}objectPositions[${d}((4*${omv}objectId+0))]=${q}${d}{${omv}left}${q}
+    ${ov}objectPositions[${d}((4*${omv}objectId+1))]=${q}${d}((${omv}left + ${omv}width-1))${q}
+    ${ov}objectPositions[${d}((4*${omv}objectId+2))]=${q}${d}{${omv}top}${q}
+    ${ov}objectPositions[${d}((4*${omv}objectId+3))]=${q}${d}((${omv}top + ${omv}height-1))${q}
+  
+    return 0
+  "
+}
+#[cf]
+#[of]:  function window.resizeObject {
+function window.resizeObject {
+#[c]object
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}left ${omv}top ${omv}width ${omv}height
+    typeset ${omv}objectId
+    typeset ${omv}objectName
+
+    ${omv}objectName=${q}${d}1${q}
+    ${d}{${omv}objectName}.getHeight ${omv}height
+    ${d}{${omv}objectName}.getWidth ${omv}width
+
+    for ${omv}objectId in ${q}${d}{!${ov}objectNames[@]}${q} ; do
+      if [[ ${q}${d}{${omv}objectName}${q} = ${q}${d}{${ov}objectNames[${d}{${omv}objectId}]}${q} ]] ; then
+        ${omv}left=${q}${d}{${ov}objectPositions[${d}((4*${omv}objectId+0))]}${q}
+        ${omv}top=${q}${d}{${ov}objectPositions[${d}((4*${omv}objectId+2))]}${q}
+        ${ov}objectPositions[${d}((4*${omv}objectId+1))]=${q}${d}((${omv}left + ${omv}width -1))${q}
+        ${ov}objectPositions[${d}((4*${omv}objectId+3))]=${q}${d}((${omv}top + ${omv}height -1))${q}
+        break
+      fi
+    done
+
+    return 0
+  "
+}
+#[cf]
+#[of]:  function window.delObject {
+function window.delObject {
+#[c]object
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}objectId
+    typeset ${omv}objectName
+
+    ${omv}objectName=${q}${d}1${q}
+
+    for ${omv}objectId in ${q}${d}{!${ov}objectNames[@]}${q} ; do
+      if [[ ${q}${d}{${omv}objectName}${q} = ${q}${d}{${ov}objectNames[${d}{${omv}objectId}]}${q} ]] ; then
+        unset ${ov}objectNames[${d}{${omv}objectId}]
+        ${ov}objectIdPool.delid ${d}{${omv}objectId}
+        break
+      fi
+    done
+
+    return 0
+  "
+}
+#[cf]
+#[of]:  function window.getEventAction {
+function window.getEventAction {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}mouseEvent ${omv}mouseX ${omv}mouseY
+    typeset ${omv}currentRelX ${omv}currentRelY ${omv}relX ${omv}relY
+    typeset ${omv}objectName ${omv}objectId ${omv}action
+#[c]    echo \"\$@\"
+    ${omv}mouseEvent=${q}${d}{5}${q}
+    ${omv}relX=${q}${d}{6}${q}
+    ${omv}relY=${q}${d}{7}${q}
+
+    if [[ -z ${q}${d}{${omv}relX}${q} ]] ; then
+      [[ ${q}${d}1${q} != ${q}!${q} ]] && eval ${d}1=\\${q}${o}\\${q}
+      ${ov}inputEventActions.getkey ${q}${d}2${q} ${q}${d}{${omv}mouseEvent}${q}
+      return
+    fi
+
+    ${omv}mouseX=${d}{${omv}relX}
+    ${omv}mouseY=${d}{${omv}relY}
+    ${omv}objectName=${q}${q}
+    for ${omv}objectId in ${q}${d}{!${ov}objectNames[@]}${q} ; do
+      if  (( ${ov}objectPositions[4*${omv}objectId+0] <= ${omv}mouseX &&
+          ${omv}mouseX <= ${ov}objectPositions[${d}((4*${omv}objectId+1))] &&
+         ${ov}objectPositions[4*${omv}objectId+2] <= ${omv}mouseY &&
+         ${omv}mouseY <= ${ov}objectPositions[4*${omv}objectId+3] ))
+      then
+        ${omv}objectName=${q}${d}{${ov}objectNames[${d}{${omv}objectId}]}${q}
+#[c]echo ${q}---|${d}{${ov}objectNames[@]}|---${q}
+        ${omv}relX=${d}(( ${omv}mouseX - ${ov}objectPositions[4*${omv}objectId+0] ))
+        ${omv}relY=${d}(( ${omv}mouseY - ${ov}objectPositions[4*${omv}objectId+2] ))
+#[c]        echo ${q}${d}{${omv}objectName} ${d}{${ov}objectPositions[4*${omv}objectId+0]} ${d}{${ov}objectPositions[4*${omv}objectId+1]} ${d}{${ov}objectPositions[4*${omv}objectId+2]} ${d}{${ov}objectPositions[4*${omv}objectId+3]}${q}
+        break
+      fi
+    done
+  
+#[c]    ((gl_debug>0)) && 
+#[c]    echo ${q}w - ${d}{!${ov}objectPositions[@]} | ${d}{${ov}objectPositions[@]} -- ${o}_${d}{${omv}objectName:---} ${d}{${omv}mouseEvent} ${d}{${omv}relX} ${d}{${omv}relY} ${d}{${omv}mouseX} ${d}{${omv}mouseY}${q}
+
+#[c][[ ${q}${o}_${d}{${omv}objectName}${q} = ${q}fileBrowserBox_fb1${q} ]] && set -xv
+
+    if [[ -n ${q}${d}{${omv}objectName}${q} ]] ; then
+#[c]      echo ${d}{${omv}objectName}.getEventAction ${q}${d}1${q} ${q}${d}2${q} ${omv}currentRelX ${omv}currentRelY ${q}${d}{${omv}mouseEvent}${q} ${d}{${omv}relX} ${d}{${omv}relY} || return 1
+      ${d}{${omv}objectName}.getEventAction ${q}${d}1${q} ${q}${d}2${q} ${omv}currentRelX ${omv}currentRelY ${q}${d}{${omv}mouseEvent}${q} ${d}{${omv}relX} ${d}{${omv}relY} || return 1
+      [[ ${q}${d}3${q} != ${q}!${q} ]] && eval ${d}3=\\${q}\\${d}{${omv}currentRelX:-\\${d}{${omv}relX}}\\${q}
+      [[ ${q}${d}4${q} != ${q}!${q} ]] && eval ${d}4=\\${q}\\${d}{${omv}currentRelY:-\\${d}{${omv}relY}}\\${q}
+      return 0
+    else
+      [[ ${q}${d}1${q} != ${q}!${q} ]] && eval ${d}1=\\${q}${o}\\${q}
+      ${ov}inputEventActions.getkey ${q}${d}2${q} ${q}${d}{${omv}mouseEvent}${q}
+      [[ ${q}${d}3${q} != ${q}!${q} ]] && eval ${d}3=\\${q}\\${d}{${omv}relX}\\${q}
+      [[ ${q}${d}4${q} != ${q}!${q} ]] && eval ${d}4=\\${q}\\${d}{${omv}relY}\\${q}
+    fi
+  "
+}
+#[cf]
+#[of]:  function window.runEventAction {
+function window.runEventAction {
+#[c]object
+#[c]somehow consume ${omv}startx ${omv}starty ${omv}x ${omv}y with callout
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}objectName ${omv}action
+    if ${o}.getEventAction ${omv}objectName ${omv}action ! ! ${q}${d}1${q} ; then
+      trap ${q}echo TRAPed signal${q} INT
+      eval ${q}${d}{${omv}action}${q}
+      trap - INT
+    fi
+  "
+}
+#[cf]
+#[of]:  function window.focusAdd {
+function window.focusAdd {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}objectId ${omv}objectName ${omv}objectLocated ${omv}focusListKey 
+    ${omv}objectLocated=0
+    ${omv}objectName=${q}${d}1${q}
+    
+    #check if object is already in the focus list    
+    for ${omv}focusListKey in ${q}${d}{${ov}focusList[@]}${q} ; do
+      if [[ ${q}${d}{${omv}objectName}${q} = ${q}${d}{${ov}objectNames[${d}{${omv}focusListKey}]}${q} ]] ; then
+        return 0
+      fi
+    done
+
+    for ${omv}objectId in ${q}${d}{!${ov}objectNames[@]}${q} ; do
+      if [[ ${q}${d}{${omv}objectName}${q} = ${q}${d}{${ov}objectNames[${d}{${omv}objectId}]}${q} ]] ; then
+        ${omv}objectLocated=1
+        break
+      fi
+    done
+    if ((${omv}objectLocated)) ; then
+      apush ${ov}focusList ${q}${d}{${omv}objectId}${q}
+    else
+      die 1 ${q}${c}.${d}{FUNCNAME[1]##*.} -- the control object ${d}{${omv}objectName} is not bound to ${o}${q}
+    fi
+  "
+}
+#[cf]
+#[of]:  function window.focusDel {
+function window.focusDel {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    ((${d}{#${ov}focusList[@]})) || return
+    typeset ${omv}focusListKey ${omv}objectName ${omv}objectLocated
+    ${omv}objectName=${q}${d}1${q}
+    
+    for ${omv}focusListKey in ${q}${d}{!${ov}focusList[@]}${q} ; do
+      if [[ ${q}${d}{${omv}objectName}${q} = ${q}${d}{${ov}objectNames[${d}{${omv}focusListKey}]##*_}${q} ]] ; then
+        unset ${ov}focusList[${d}{${omv}focusListKey}]
+        ${ov}focusList=( ${q}${d}{${ov}focusList[@]}${q} )
+        break
+      fi
+    done
+  "
+}
+#[cf]
+#[of]:  function window.focusList {
+function window.focusList {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}entry ${omv}objectId ${omv}objectName ${omv}focusListKey ${omv}focusList ${omv}focusListMerged
+    typeset ${omv}parentFocusKey
+    ${omv}parentFocusKey=${q}${d}2${q}
+
+    for ${omv}focusListKey in ${q}${d}{${ov}focusList[@]}${q} ; do
+      ${omv}objectName=${q}${d}{${ov}objectNames[${d}{${omv}focusListKey}]}${q}
+      if isfnset ${d}{${omv}objectName}.focusList ; then
+        ${d}{${omv}objectName}.focusList ${omv}focusList ${q}${d}{${omv}parentFocusKey}_${d}{${omv}objectName}${q}
+        for ${omv}entry in ${q}${d}{${omv}focusList[@]}${q} ; do
+          apush ${omv}focusListMerged ${q}${d}{${omv}entry}${q}
+        done
+      else
+        apush ${omv}focusListMerged ${q}${d}{${omv}parentFocusKey}_${d}{${omv}objectName}${q}
+      fi
+    done
+
+    aset ${d}1 ${q}${d}{${omv}focusListMerged[@]}${q}
+  "
+}
+#[cf]
+#[of]:  function window.setcursorxy {
+function window.setcursorxy {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}x ${omv}y
+    ${omv}x=${d}1
+    ${omv}y=${d}2
+    echo -en ${q}\\\\033[${d}((${ov}topOffset+1+${omv}y));${d}((${ov}leftOffset+1+${omv}x))H${q}
+    return 0
+  "
+}
+#[cf]
+}
+#[cf]
+#[cf]
+#[of]:class methods
+#[of]:function window.classconstructor {
+function window.classconstructor {
+#[c]object
+#[of]:  includes
+  include hash
+  include referenceid
+#[cf]
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+#[of]:    class data
+
+#[cf]
+  "
+}
+#[cf]
+#[cf]
+#[of]:dynamic methods
+#[of]:function window.constructor {
+function window.constructor {
+#[c]object
+#[of]:set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  #echo constructing object ${o} of class ${c}
+  typeset i
+  for i in height width title drawBorder borderStyle ; do
+    eval "
+      newvar ${ov}${i}
+      function ${o}.set${i^} {
+        ${ov}${i}=${q}${d}1${q}
+      }
+
+      function ${o}.get${i^} {
+        if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+          echo ${q}${d}{${ov}${i}}${q}
+        else
+          eval ${d}1=\\${q}\\${d}{${ov}${i}}\\${q}
+        fi
+      }
+    "
+  done
+  eval "
+#[of]:    function ${o}.bindEventAction {
+function ${o}.bindEventAction {
+  typeset i
+  for i in ${q}${d}{@:1:${d}#-1}${q} ; do
+    ${ov}inputEventActions.setkey ${q}${d}{i}${q} ${q}${d}{@: -1}${q}
+  done
+}
+#[cf]
+#[of]:    function ${o}.delEventAction {
+function ${o}.delEventAction {
+  ${ov}inputEventActions.delkey ${q}${d}1${q}
+}
+#[cf]
+#[of]:    object data
+newvar ${ov}objectPositions ${ov}leftOffset ${ov}topOffset
+new referenceid ${ov}objectIdPool
+new hash ${ov}inputEventActions
+
+${o}.setWidth ${q}${d}{1:-0}${q}
+${o}.setHeight ${q}${d}{2:-0}${q}
+
+${ov}drawBorder=0
+${ov}borderStyle=0
+
+#[cf]
+  "
+}
+#[cf]
+#[cf]
+#[cf]
+#[of]:button
+#[of]:static methods
+#[of]:function button.staticconstructor {
+function button.staticconstructor {
+#[of]:  function button.drawBorder {
+function button.drawBorder {
+#[c]object -|var
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    ((${ov}height>2)) && {
+      typeset ${omv}line  ${omv}h ${omv}v  ${omv}tl_br ${omv}tr_bl ${omv}index
+      case ${q}${d}{${ov}borderStyle}${q} in
+        1)
+          ${omv}h='-'
+          ${omv}v='|'
+          ${omv}tl_br='/'
+          ${omv}tr_bl='\'
+          ;;
+        *)
+          ${omv}h='*'
+          ${omv}v='*'
+          ${omv}tl_br='*'
+          ${omv}tr_bl='*'
+          ;;
+      esac
+
+      ${o}.setcursorxy 0 0
+      printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tl_br}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tr_bl}${q}
+
+      for ((${omv}index=1;${omv}index<${ov}height-1;${omv}index++)) ; do
+        ${o}.setcursorxy 0 ${d}{${omv}index}
+        echo -n ${q}${d}{${omv}v}${q}
+        ${o}.setcursorxy $((${ov}width-1)) ${d}{${omv}index}
+        echo -n ${q}${d}{${omv}v}${q}
+      done
+
+#[c]      ${o}.setcursorxy 0 1
+#[c]      printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
+#[c]      ${o}.setcursorxy ${d}((${ov}width-1)) 1
+#[c]      printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
+
+      ${o}.setcursorxy 0 ${d}((${ov}height-1))
+      printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tr_bl}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tl_br}${q}
+    }
+
+    return 0
+  "
+}
+#[cf]
+#[of]:  function button.runEventAction {
+function button.runEventAction {
+#[c]object
+#[c]somehow consume ${omv}startx ${omv}starty ${omv}x ${omv}y with callout
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}objectName ${omv}action
+    if ${o}.getEventAction ${omv}objectName ${omv}action ! ! ${q}${d}1${q} ; then
+      trap ${q}echo TRAPed signal${q} INT
+      eval ${q}${d}{${omv}action}${q}
+      trap - INT
+    fi
+  "
+}
+#[cf]
+#[of]:  function button.refresh {
+function button.refresh {
+#[c]object
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}hasFocus ${omv}length
+    ${ov}leftOffset=${q}${d}{1}${q}
+    ${ov}topOffset=${q}${d}{2}${q}
+
+    [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${omv}hasFocus=1 || ${omv}hasFocus=0
+    
+    ${o}.drawBorder
+
+    ((${omv}hasFocus)) && screen.styleSetReverse
+    
+    screen.stringLength ${omv}length ${q}${d}{${ov}title}${q}
+    ${o}.setcursorxy ${d}((${ov}width/2-${d}{${omv}length}/2)) ${d}((${ov}height/2))
+    echo -n ${q}${d}{${ov}title:0:${d}((${ov}width))}${q}
+
+    ((${omv}hasFocus)) && screen.styleSetNormal
+  "
+}
+#[c]
+#[c]if button bigger than label i.e. height>1 or width greater than title
+#[c]
+#[c]title is always center of button
+#[c]should we support multiline titles?  not yet.
+#[cf]
+#[of]:  function button.setcursorxy {
+function button.setcursorxy {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}x ${omv}y
+    ${omv}x=${d}1
+    ${omv}y=${d}2
+    echo -en ${q}\\\\033[${d}((${ov}topOffset+1+${omv}y));${d}((${ov}leftOffset+1+${omv}x))H${q}
+    return 0
+  "
+}
+#[cf]
+}
+#[cf]
+#[cf]
+#[of]:class methods
+#[of]:function buton.classconstructor {
+function button.classconstructor {
+#[c]object
+#[of]:  includes
+  include hash
+#[cf]
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+#[of]:    class data
+
+#[cf]
+  "
+}
+#[cf]
+#[cf]
+#[of]:dynamic methods
+#[of]:function button.constructor {
+function button.constructor {
+#[of]:set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  typeset i
+  for i in height width ; do
+    eval "
+      newvar ${ov}${i}
+      function ${o}.set${i^} {
+        ${ov}${i}=${q}${d}1${q}
+      }
+
+      function ${o}.get${i^} {
+        if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+          echo ${q}${d}{${ov}${i}}${q}
+        else
+          eval ${d}1=\\${q}\\${d}{${ov}${i}}\\${q}
+        fi
+      }
+    "
+  done
+  eval "
+#[of]:    function ${o}.bindEventAction {
+function ${o}.bindEventAction {
+  typeset i
+  for i in ${q}${d}{@:1:${d}#-1}${q} ; do
+    ${ov}inputEventActions.setkey ${q}${d}{i}${q} ${q}${d}{@: -1}${q}
+  done
+}
+#[cf]
+#[of]:    function ${o}.getEventAction {
+function ${o}.getEventAction {
+  [[ ${q}${d}1${q} != ${q}!${q} ]] && eval ${d}1=\\${q}${o}\\${q}
+  ${ov}inputEventActions.getkey ${q}${d}2${q} ${q}${d}5${q}
+}
+#[cf]
+#[of]:    function ${o}.delEventAction {
+function ${o}.delEventAction {
+  ${ov}inputEventActions.delkey ${q}${d}1${q}
+}
+#[cf]
+#[of]:    function ${o}.setTitle {
+function ${o}.setTitle {
+  ${ov}title=${q}${d}1${q}
+
+  if ((${ov}width==0)) ; then
+    ${ov}width=${d}((${d}{#${ov}title}+4))
+  else
+    screen.trimString ${ov}title ${d}{${ov}width} ${q}${d}{${ov}title}${q}
+  fi
+}
+#[cf]
+#[of]:    function ${o}.getTitle {
+function ${o}.getTitle {
+  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+    echo ${q}${d}{${ov}title}${q}
+  else
+    eval ${d}1=\\${q}\\${d}{${ov}title}\\${q}
+  fi
+}
+#[cf]
+#[of]:    object data
+newvar ${ov}height ${ov}width ${ov}title
+new hash ${ov}inputEventActions
+
+${o}.setWidth ${q}${d}{1:-0}${q}
+${o}.setHeight ${q}${d}{2:-1}${q}
+
+${ov}drawBorder=0
+${ov}borderStyle=1
+#[cf]
+  "
+}
+#[cf]
+#[cf]
+#[cf]
+#[of]:progressSlider
+#[of]:static methods
+#[of]:function progressSlider.staticconstructor {
+function progressSlider.staticconstructor {
+#[of]:  function progressSlider.runEventAction {
+function progressSlider.runEventAction {
+#[c]object
+#[c]somehow consume ${omv}startx ${omv}starty ${omv}x ${omv}y with callout
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}objectName ${omv}action
+    if ${o}.getEventAction ${omv}objectName ${omv}action ! ! ${q}${d}1${q} ; then
+      trap ${q}echo TRAPed signal${q} INT
+      eval ${q}${d}{${omv}action}${q}
+      trap - INT
+    fi
+  "
+}
+#[cf]
+#[of]:  function progressSlider.refresh {
+function progressSlider.refresh {
+#[c]object
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}hasFocus ${omv}timeSliderLength ${omv}songLength ${omv}songTimePlayed ${omv}songPercentagePlayed
+
+    [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${omv}hasFocus=1 || ${omv}hasFocus=0
+    ! ((${omv}hasFocus)) && ${cmv}timeSlider=${q}${d}{${ov}timeSlider}${q}
+    ((${omv}hasFocus)) && ${cmv}timeSlider=${q}${d}{${ov}timeSliderFocused}${q}
+
+    ${omv}timeSliderLength=${d}((${ov}timeSliderLength-3))
+    ${omv}songLength=${d}(echo '{ ${q}command${q}: [${q}get_property${q}, ${q}duration${q}] }' | socat - /tmp/mpvsocket 2>/dev/null | grep -oP '${q}data${q}:\\K[^,]+')
+    ${omv}songTimePlayed=${d}(echo '{ ${q}command${q}: [${q}get_property${q}, ${q}playback-time${q}] }' | socat - /tmp/mpvsocket 2>/dev/null | grep -oP '${q}data${q}:\\K[^,]+')
+    [[ -z ${q}${d}{${omv}songLength}${q} || -z ${q}${d}{${omv}songTimePlayed##*[^[:digit:].]*}${q} ]] && {
+      echo -n ${q}<00%${d}{${cmv}timeSlider:3:${d}((${omv}timeSliderLength))}>${q}
+      return
+    }
+    
+    ${omv}songPercentagePlayed=${d}(bc -l <<< ${q}${d}{${omv}songTimePlayed}/${d}{${omv}songLength}*100${q})
+    ${omv}songPercentagePlayed=${q}${d}{${omv}songPercentagePlayed%%.*}${q}
+    [[ -z ${q}${d}{${omv}songPercentagePlayed}${q} ]] && ${omv}songPercentagePlayed=0
+  
+#[c]    echo -ne ${q}${d}{${ov}timeSliderErase}${q}
+    echo -n ${q}<${d}{${cmv}timeSlider:0:${d}((${omv}songPercentagePlayed*${omv}timeSliderLength/100))}${d}(printf '%02d%%' ${q}${d}{${omv}songPercentagePlayed#0}${q})${d}{${cmv}timeSlider:${d}((${omv}songPercentagePlayed*${omv}timeSliderLength/100)):${d}((${omv}timeSliderLength-(${omv}songPercentagePlayed*${omv}timeSliderLength/100) ))}>${q}
+  "
+}
+#[cf]
+#[of]:  function progressSlider.buildSlider {
+function progressSlider.buildSlider {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    printf -v ${ov}timeSlider %${d}((${ov}width-2))s ${q}${q}
+    ${ov}timeSliderErase=${q}${d}{${ov}timeSlider// /\\\\b}\\b\\b${q}
+    ${ov}timeSliderFocused=${q}${d}{${ov}timeSlider// /_}${q}
+    ${ov}timeSlider=${q}${d}{${ov}timeSlider// /-}${q}
+    ${ov}timeSliderLength=${q}${d}{#${ov}timeSlider}${q}
+  "
+}
+#[cf]
+}
+#[cf]
+#[cf]
+#[of]:class methods
+#[of]:function progressSlider.classconstructor {
+function progressSlider.classconstructor {
+#[c]object
+#[of]:  includes
+  include hash
+#[cf]
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+#[of]:    class data
+
+#[cf]
+  "
+}
+#[cf]
+#[cf]
+#[of]:dynamic methods
+#[of]:function progressSlider.constructor {
+function progressSlider.constructor {
+#[of]:set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+#[of]:    function ${o}.bindEventAction {
+function ${o}.bindEventAction {
+  typeset i
+  for i in ${q}${d}{@:1:${d}#-1}${q} ; do
+    ${ov}inputEventActions.setkey ${q}${d}{i}${q} ${q}${d}{@: -1}${q}
+  done
+}
+#[cf]
+#[of]:    function ${o}.getEventAction {
+function ${o}.getEventAction {
+  [[ ${q}${d}1${q} != ${q}!${q} ]] && eval ${d}1=\\${q}${o}\\${q}
+  ${ov}inputEventActions.getkey ${q}${d}2${q} ${q}${d}5${q}
+}
+#[cf]
+#[of]:    function ${o}.delEventAction {
+function ${o}.delEventAction {
+  ${ov}inputEventActions.delkey ${q}${d}1${q}
+}
+#[cf]
+#[of]:    function ${o}.getHeight {
+function ${o}.getHeight {
+  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+    echo ${q}${d}{${ov}height}${q}
+  else
+    eval ${d}1=\\${q}\\${d}{${ov}height}\\${q}
+  fi
+}
+#[cf]
+#[of]:    function ${o}.getWidth {
+function ${o}.getWidth {
+  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+    echo ${q}${d}{${ov}width}${q}
+  else
+    eval ${d}1=\\${q}\\${d}{${ov}width}\\${q}
+  fi
+}
+#[cf]
+#[of]:    function ${o}.setHeight {
+function ${o}.setHeight {
+  :
+}
+#[c]height for this type of progressSlider is always 1
+#[cf]
+#[of]:    function ${o}.setWidth {
+function ${o}.setWidth {
+  ${ov}width=${q}${d}1${q}
+  ${o}.buildSlider
+}
+#[cf]
+#[of]:    function ${o}.setTitle {
+function ${o}.setTitle {
+  ${ov}title=${q}${d}1${q}
+}
+#[cf]
+#[of]:    function ${o}.getTitle {
+function ${o}.getTitle {
+  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+    echo ${q}${d}{${ov}title}${q}
+  else
+    eval ${d}1=\\${q}\\${d}{${ov}title}\\${q}
+  fi
+}
+#[cf]
+#[of]:    object data
+newvar ${ov}height ${ov}width ${ov}title
+new hash ${ov}inputEventActions
+newvar ${ov}timeSlider ${ov}timeSliderErase ${ov}timeSliderFocused ${ov}timeSliderLength
+
+${ov}width=${q}${d}{1:-82}${q}
+${ov}height=1
+
+#[cf]
+    ${o}.buildSlider
+  "
+}
+#[cf]
+#[cf]
+#[cf]
+#[of]:fileBrowser
+#[of]:static methods
+#[of]:function fileBrowser.staticconstructor {
+function fileBrowser.staticconstructor {
+#[of]:  function fileBrowser.runEventAction {
+function fileBrowser.runEventAction {
+#[c]object
+#[c]somehow consume ${omv}startx ${omv}starty ${omv}x ${omv}y with callout
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}objectName ${omv}action
+    if ${o}.getEventAction ${omv}objectName ${omv}action ! ! ${q}${d}1${q} ; then
+      trap ${q}echo TRAPed signal${q} INT
+      eval ${q}${d}{${omv}action}${q}
+      trap - INT
+    fi
+  "
+}
+#[cf]
+#[of]:  function fileBrowser.refresh {
+function fileBrowser.refresh {
+#[c]object
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}index
+    ${ov}leftOffset=${q}${d}{1}${q}
+    ${ov}topOffset=${q}${d}{2}${q}
+
+    for ((${omv}index=${ov}fileListIndexOffset;${omv}index<${ov}height+${ov}fileListIndexOffset;${omv}index++)) ; do
+      ${o}.setcursorxy 0 ${d}((${omv}index-${ov}fileListIndexOffset))
+      ((${ov}selectedFile==${omv}index)) && screen.styleSetReverse
+      echo -n ${q} ${d}{${ov}fileListTrimmed[${d}{${omv}index}]}${q}
+      ((${ov}selectedFile==${omv}index)) && screen.styleSetNormal
+    done
+  "
+}
+#[cf]
+#[of]:  function fileBrowser.updateFileList {
+function fileBrowser.updateFileList {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}IFS ${omv}entry
+
+    ${omv}IFS=${q}${d}{IFS}${q}
+    IFS=${d}'\\n'
+    ${ov}fileList=( .. ${d}( cd ${q}${d}{${ov}pwd}${q};{ find . -maxdepth 1 -type d | sort;find . -maxdepth 1 -type f | sort; } | grep -oP '^\\./\\K.*') )
+    IFS=${q}${d}{${omv}IFS}${q}
+
+    unset ${ov}fileListTrimmed
+    for ${omv}entry in ${q}${d}{${ov}fileList[@]}${q} ; do
+      screen.trimString ${omv}entry ${d}((${ov}width-3)) ${q}${d}{${omv}entry}${q}
+      apush ${ov}fileListTrimmed ${q}${d}{${omv}entry}${q}
+    done
+
+    ${ov}fileListIndexOffset=0
+    ${ov}selectedFile=0
+  "
+}
+#[cf]
+#[of]:  function fileBrowser.selectFile {
+function fileBrowser.selectFile {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    [[ -n ${q}${d}{1}${q} ]] && ${ov}selectedFile=${d}((${ov}fileListIndexOffset+${d}{1}))
+
+    [[ ${q}${d}{${ov}fileList[${d}{${ov}selectedFile}]}${q} = ${q}..${q} ]] && {
+      ${ov}pwd=${d}(cd ${q}${d}{${ov}pwd}${q};cd ..;pwd)
+      ${o}.updateFileList
+      return 1
+    }
+    [[ -d ${q}${d}{${ov}pwd}/${d}{${ov}fileList[${d}{${ov}selectedFile}]}${q} ]] && {
+      ${ov}pwd=${d}(cd ${q}${d}{${ov}pwd}/${d}{${ov}fileList[${d}{${ov}selectedFile}]}${q};pwd)
+      ${o}.updateFileList
+      return 1
+    }
+    
+    return 0
+  "
+}
+#[cf]
+#[of]:  function fileBrowser.incSelectedFile {
+function fileBrowser.incSelectedFile {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    if ((${ov}selectedFile>=${d}{#${ov}fileList[@]}-1)) ; then
+      ${ov}selectedFile=0
+      ${ov}fileListIndexOffset=0
+    else
+      ((${ov}selectedFile++))
+    fi
+
+    ((${ov}selectedFile-${ov}fileListIndexOffset>${ov}height-1)) && ${o}.pageDown
+  "
+}
+#[cf]
+#[of]:  function fileBrowser.decSelectedFile {
+function fileBrowser.decSelectedFile {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    if ((${ov}selectedFile==0)) ; then
+      ((${ov}selectedFile=${d}{#${ov}fileList[@]}-1))
+      for ((${ov}fileListIndexOffset=0;${ov}fileListIndexOffset<${ov}selectedFile-${ov}height-1;${ov}fileListIndexOffset=${ov}fileListIndexOffset+${ov}height)) do :; done
+    else
+      ((${ov}selectedFile--))
+    fi
+
+    ((${ov}selectedFile<${ov}fileListIndexOffset)) && {
+      ${o}.pageUp
+      ((${ov}selectedFile=${ov}fileListIndexOffset+${ov}height-1))
+    }
+  "
+}
+#[cf]
+#[of]:  function fileBrowser.getSelectedFile {
+function fileBrowser.getSelectedFile {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+      echo ${q}${d}{${ov}fileList[${d}{${ov}selectedFile}]}${q}
+    else
+      eval ${d}1=\\${q}\\${d}{${ov}fileList[\\${d}{${ov}selectedFile}]}\\${q}
+    fi
+  "
+}
+#[cf]
+#[of]:  function fileBrowser.setcursorxy {
+function fileBrowser.setcursorxy {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}x ${omv}y
+    ${omv}x=${d}1
+    ${omv}y=${d}2
+    echo -en ${q}\\\\033[${d}((${ov}topOffset+1+${omv}y));${d}((${ov}leftOffset+1+${omv}x))H${q}
+    return 0
+  "
+}
+#[cf]
+}
+#[cf]
+#[cf]
+#[of]:class methods
+#[of]:function fileBrowser.classconstructor {
+function fileBrowser.classconstructor {
+#[c]object
+#[of]:  includes
+  include hash
+#[cf]
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+#[of]:    class data
+
+#[cf]
+  "
+}
+#[cf]
+#[cf]
+#[of]:dynamic methods
+#[of]:function fileBrowser.constructor {
+function fileBrowser.constructor {
+#[of]:set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  typeset i
+  for i in height width pwd ; do
+    eval "
+      newvar ${ov}${i}
+      function ${o}.set${i^} {
+        ${ov}${i}=${q}${d}1${q}
+      }
+
+      function ${o}.get${i^} {
+        if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+          echo ${q}${d}{${ov}${i}}${q}
+        else
+          eval ${d}1=\\${q}\\${d}{${ov}${i}}\\${q}
+        fi
+      }
+    "
+  done
+  eval "
+#[of]:    function ${o}.bindEventAction {
+function ${o}.bindEventAction {
+  typeset i
+  for i in ${q}${d}{@:1:${d}#-1}${q} ; do
+    ${ov}inputEventActions.setkey ${q}${d}{i}${q} ${q}${d}{@: -1}${q}
+  done
+}
+#[cf]
+#[of]:    function ${o}.getEventAction {
+function ${o}.getEventAction {
+  [[ ${q}${d}1${q} != ${q}!${q} ]] && eval ${d}1=\\${q}${o}\\${q}
+  ${ov}inputEventActions.getkey ${q}${d}2${q} ${q}${d}5${q}
+}
+#[cf]
+#[of]:    function ${o}.delEventAction {
+function ${o}.delEventAction {
+  ${ov}inputEventActions.delkey ${q}${d}1${q}
+}
+#[cf]
+#[of]:    function ${o}.incFileListIndexOffset {
+function ${o}.incFileListIndexOffset {
+  ((${ov}fileListIndexOffset<${d}{#${ov}fileList[@]}-${ov}height)) && ((${ov}fileListIndexOffset++))
+}
+#[cf]
+#[of]:    function ${o}.decFileListIndexOffset {
+function ${o}.decFileListIndexOffset {
+  ((${ov}fileListIndexOffset>0)) && ((${ov}fileListIndexOffset--))
+}
+#[cf]
+#[of]:    function ${o}.setPwd {
+function ${o}.setPwd {
+  ${ov}pwd=${q}${d}1${q}
+  ${o}.updateFileList
+}
+#[cf]
+#[of]:    function ${o}.pageUp {
+function ${o}.pageUp {
+  ((${ov}fileListIndexOffset>0)) && ((${ov}fileListIndexOffset=${ov}fileListIndexOffset-${ov}height))
+  ((${ov}fileListIndexOffset<0)) && ${ov}fileListIndexOffset=0
+  ((${ov}selectedFile=${ov}fileListIndexOffset))
+}
+#[c]
+#[cf]
+#[of]:    function ${o}.pageDown {
+function ${o}.pageDown {
+  ((${ov}fileListIndexOffset<${d}{#${ov}fileList[@]}-${ov}height)) && ((${ov}fileListIndexOffset=${ov}fileListIndexOffset+${ov}height))
+  ((${ov}selectedFile=${ov}fileListIndexOffset))
+}
+#[cf]
+#[of]:    object data
+newvar ${ov}height ${ov}width ${ov}leftOffset ${ov}topOffset
+newvar ${ov}fileList ${ov}fileListTrimmed ${ov}fileListIndexOffset
+newvar ${ov}pwd ${ov}selectedFile
+new hash ${ov}inputEventActions
+
+${ov}width=${q}${d}{1:-0}${q}
+${ov}height=${q}${d}{2:-0}${q}
+
+${ov}pwd=${q}${d}{3:-${d}(pwd)}${q}
+${ov}pwd=${q}${d}{${ov}pwd%/}${q}
+#[cf]
+    ${o}.updateFileList
+  "
+}
+#[cf]
+#[cf]
+#[cf]
