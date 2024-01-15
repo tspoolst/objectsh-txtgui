@@ -59,7 +59,10 @@ function screen.open {
 #[of]:    key process loop
     while {
         #echo ${q}waiting for input${q}
-        ((${ov}flagExitScreen)) && break
+        ((${ov}flagExitScreen)) && {
+          ${ov}flagExitScreen=0
+          break
+        }
         read -s -N 1 -r ${d}{${ov}keytimeout:+-t ${d}{${ov}keytimeout}} ${omv}key ; :
       } ; do
       case ${q}${d}{${omv}key}${q} in
@@ -341,7 +344,8 @@ function screen.refresh {
     ((gl_debug>0)) && return
     typeset ${omv}objectId ${omv}left ${omv}top
 
-#[c]    ${o}.focusGet ${ov}focusedObjectName
+    ${o}.runEventAction refresh
+
     clear
 
     for ${omv}objectId in ${q}${d}{!${ov}objectNames[@]}${q} ; do
@@ -892,12 +896,10 @@ newvar ${cv}height ${cv}width
 #[of]:dynamic methods
 #[of]:function screen.constructor {
 function screen.constructor {
-#[c]object
 #[of]:set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
-  #echo constructing object ${o} of class ${c}
   eval "
 #[of]:    function ${o}.bindEventAction {
 function ${o}.bindEventAction {
@@ -1033,6 +1035,7 @@ function window.refresh {
     ${omv}parentFocusKey=${q}${d}3${q}
     ${omv}focusedObject=${q}${d}4${q}
     
+    ${o}.runEventAction refresh
 
     ((${ov}drawBorder)) && ${o}.drawBorder
 
@@ -1341,12 +1344,10 @@ function window.classconstructor {
 #[of]:dynamic methods
 #[of]:function window.constructor {
 function window.constructor {
-#[c]object
 #[of]:set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
-  #echo constructing object ${o} of class ${c}
   typeset i
   for i in height width title drawBorder borderStyle ; do
     eval "
@@ -1476,6 +1477,8 @@ function button.refresh {
     typeset ${omv}hasFocus ${omv}length
     ${ov}leftOffset=${q}${d}{1}${q}
     ${ov}topOffset=${q}${d}{2}${q}
+
+    ${o}.runEventAction refresh
 
     [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${omv}hasFocus=1 || ${omv}hasFocus=0
     
@@ -1819,8 +1822,12 @@ function fileBrowser.refresh {
 #[cf]
   eval "
     typeset ${omv}index
-    ${ov}leftOffset=${q}${d}{1}${q}
-    ${ov}topOffset=${q}${d}{2}${q}
+    [[ -n ${q}${d}{2}${q} ]] && {
+      ${ov}leftOffset=${q}${d}{1}${q}
+      ${ov}topOffset=${q}${d}{2}${q}
+    }
+
+    ${o}.runEventAction refresh
 
     for ((${omv}index=${ov}fileListIndexOffset;${omv}index<${ov}height+${ov}fileListIndexOffset;${omv}index++)) ; do
       ${o}.setcursorxy 0 ${d}((${omv}index-${ov}fileListIndexOffset))
@@ -1866,11 +1873,13 @@ function fileBrowser.selectFile {
     [[ -n ${q}${d}{1}${q} ]] && ${ov}selectedFile=${d}((${ov}fileListIndexOffset+${d}{1}))
 
     [[ ${q}${d}{${ov}fileList[${d}{${ov}selectedFile}]}${q} = ${q}..${q} ]] && {
+      ${o}.refresh
       ${ov}pwd=${d}(cd ${q}${d}{${ov}pwd}${q};cd ..;pwd)
       ${o}.updateFileList
       return 1
     }
     [[ -d ${q}${d}{${ov}pwd}/${d}{${ov}fileList[${d}{${ov}selectedFile}]}${q} ]] && {
+      ${o}.refresh
       ${ov}pwd=${d}(cd ${q}${d}{${ov}pwd}/${d}{${ov}fileList[${d}{${ov}selectedFile}]}${q};pwd)
       ${o}.updateFileList
       return 1
