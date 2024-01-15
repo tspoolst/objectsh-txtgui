@@ -1,4 +1,13 @@
 #!/bin/bash
+#[c]mouse drag and drop
+#[c]on mouse down record object and position of down event
+#[c]  on mouseDrag
+#[c]    generate drag mp(message package) i.e. filename/url/etc.
+#[c]    on mouse up send mp to object that received the mouseUp event via a mouseDrop 
+#[c]  remove mouse down event data
+#[c]
+#[c]
+#[c]
 #[c]screen
 #[c]  size: grab from terminal
 #[c]  handle all Key/Mouse Events
