@@ -1668,7 +1668,13 @@ function progressSlider.refresh {
       return
     }
     
-    ${omv}songPercentagePlayed=${d}(bc -l <<< ${q}${d}{${omv}songTimePlayed}/${d}{${omv}songLength}*100${q})
+#[c]    ${omv}songPercentagePlayed=${d}(bc -l <<< ${q}${d}{${omv}songTimePlayed}/${d}{${omv}songLength}*100${q})
+    ${omv}songLength=${q}${d}{${omv}songLength//./}${q}
+    ${omv}songLength=${q}${d}{${omv}songLength:0:-3}${q}
+    ${omv}songTimePlayed=${q}${d}{${omv}songTimePlayed//./}${q}
+    ${omv}songTimePlayed=${q}${d}{${omv}songTimePlayed:0:-3}${q}
+    ${omv}songPercentagePlayed=${d}((10#${d}{${omv}songTimePlayed}*100/10#${d}{${omv}songLength}))
+
     ${omv}songPercentagePlayed=${q}${d}{${omv}songPercentagePlayed%%.*}${q}
     [[ -z ${q}${d}{${omv}songPercentagePlayed}${q} ]] && ${omv}songPercentagePlayed=0
   
