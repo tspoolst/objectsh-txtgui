@@ -1,13 +1,79 @@
 #!/bin/bash
+#[of]:comments
+#[of]:mouse movements
 #[c]mouse drag and drop
 #[c]on mouse down record object and position of down event
 #[c]  on mouseDrag
 #[c]    generate drag mp(message package) i.e. filename/url/etc.
 #[c]    on mouse up send mp to object that received the mouseUp event via a mouseDrop 
 #[c]  remove mouse down event data
+#[cf]
+#[c]
+#[of]:separate refresh events
+#[c]separate refresh events
+#[c]  things that need to update the screen vs things that don't
+#[c]  ${ov}tickResolution=seconds
+#[c]  ${ov}refreshInterval
+#[c]add ability to set timer events
+#[c]add individual control screen updates
+#[c]
+#[c]registering with the screen object is the easiest table lookup
+#[c]
+#[c]want to check if the current file is still playing every tick or evry other tick
+#[c]  s1.timerEventAdd objectname event_to_trigger tick_devisor
+#[c]
+#[c]have a list of objects with timer events
+#[c]
+#[c]interlaced array = structure?
+#[c]for ((i=0;i<size:i=i+3)) ; do
+#[c]  ((tick%a[i]==0)) && a[i+1].runEventAction a[+2]
+#[c]done
+#[c]
+#[c]gives us our max time between timer event excutions at 1 second intervals 24hours
+#[c]ticks=$((1000/a*10))
+#[c]((tick+=1))
+#[c]((tick>86400)) && tick=0
 #[c]
 #[c]
+#[c]i=1000;t=10;p=1000
+#[c]ticks=$((p*1000/i*t/p))
+#[c]echo $ticks
+#[c]printf -v i '%04d' "$i"
+#[c]echo $i
+#[c]i="${i%???}.${i#${i%???}}"
+#[c]echo "$i"
+#[c]for ((j=0;j<ticks;j++));do echo -n "$j ";sleep $i;done
 #[c]
+#[c]
+#[c]time bash -c 'i=1000;t=10;p=1000;ticks=$((p*1000/i*t/p));echo $ticks;printf -v i '%04d' "$i";echo $i;i="${i%???}.${i#${i%???}}";echo "$i";for ((j=0;j<ticks;j++));do echo -n "$j ";sleep $i;done;echo'
+#[cf]
+#[c]
+#[c]
+#[c]implement layer selection
+#[c]  all abject default to layer 0 (the lowest layer)
+#[c]  
+#[c]
+#[c]build
+#[c]  listbox
+#[c]    can contain check-boxes(1 or more selections) or circle-selectors(only 1 selection)
+#[c]  dropdown
+#[c]    like any other type of object, but it must always be draw above all other object
+#[c]  textbox
+#[c]    a textbox implies the ability to edit text
+#[c]
+#[c]modify
+#[c]  label - perhaps rename all button references to label
+#[c]    a button is just a label (usually with a border draw) with key/mouse events tagged to it.
+#[c]
+#[c]
+#[of]:notes
+#[c]If you are displaying text, that is, there is no user input...use a label.
+#[c]If you are trying to get user input, use a textbox.
+#[c]
+#[cf]
+#[cf]
+#[of]:screen
+#[of]:description
 #[c]screen
 #[c]  size: grab from terminal
 #[c]  handle all Key/Mouse Events
@@ -16,31 +82,7 @@
 #[c]    button
 #[c]    slider
 #[c]    filebrowser
-#[c]
-#[c]set call functions
-#[c]
-#[c]function screen.addElement window
-#[c]function screen.delElement id
-#[c]function screen.set/getElementSize id l w
-#[c]  Size lxw
-#[c]  PositionRel %Xx%Y
-#[c]  PositionAbsolute XxY
-#[c]  
-#[c]function window.add button/slider/filebrowser
-#[c]
-#[c]screen.add button buttonID
-#[c]screen.add slider sliderID
-#[c]
-#[c]get set
-#[c]  Size lxw
-#[c]  PositionRel %Xx%Y
-#[c]  PositionAbsolute XxY
-#[c]  Title 
-#[c]get
-#[c]  ID
-#[c]
-
-#[of]:screen
+#[cf]
 #[of]:static methods
 #[of]:function screen.staticconstructor {
 function screen.staticconstructor {
@@ -52,13 +94,15 @@ function screen.open {
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
-    typeset ${omv}key ${omv}mouse
+    typeset _i
+    typeset ${omv}refreshInterval ${omv}key ${omv}mouse
     typeset ${omv}mouseEvent ${omv}mouseEvents ${omv}mouseButtonId ${omv}mouseButtonName
     typeset ${omv}mouseXStart ${omv}mouseYStart ${omv}mouseX ${omv}mouseY
     typeset ${omv}currentRelX ${omv}currentRelY ${omv}relX ${omv}relY
     typeset ${omv}mouseButtonState ${omv}shift ${omv}alt ${omv}ctrl
     typeset ${omv}objectName ${omv}objectId
 
+    ${omv}refreshInterval=${q}${d}{${ov}refreshInterval}${q}
 
     ${c}.calcscreensize
     ${o}.focusListBuild
@@ -66,14 +110,40 @@ function screen.open {
     ${o}.refresh
     ${c}.mouseEnable -d
 #[of]:    key process loop
-    while {
-        #echo ${q}waiting for input${q}
-        ((${ov}flagExitScreen)) && {
-          ${ov}flagExitScreen=0
-          break
+    while : ; do
+      ((${ov}flagExit)) && {
+        ${ov}flagExit=0
+        break
+      }
+      read -s -N 1 -r ${d}{${ov}tickIntervalSeconds:+-t ${d}{${ov}tickIntervalSeconds}} ${omv}key || {
+#[c]
+        ((${ov}tick+=1))
+        ((${ov}tick>${ov}tickMax)) && ${ov}tick=0
+        
+        for ((_i=0;_i<${d}{#${ov}tickEvents}:_i=_i+3)) ; do
+          ((${ov}tick%${ov}tickEvents[_i]==0)) && ${d}{${ov}tickEvents[${d}((_i+1))]}.runEventAction ${d}{${ov}tickEvents[${d}((_i+2))]}
+        done
+        
+        
+        ((${omv}refreshInterval==0)) && {
+          ${omv}refreshInterval=${q}${d}{${ov}refreshInterval}${q}
+          ${o}.refresh
         }
-        read -s -N 1 -r ${d}{${ov}keytimeout:+-t ${d}{${ov}keytimeout}} ${omv}key ; :
-      } ; do
+        echo ${q}${d}{${omv}refreshInterval}${q}
+        ((${omv}refreshInterval-=1))
+#[c]        
+        _precision=100
+        ${ov}tick=0
+        ${ov}tickInterval=1000
+        ${ov}cycleLength=$((24*60*60))
+        
+        ${ov}tickMax=$((_precision*1000/${ov}tickInterval*${ov}cycleLength/_precision))
+        printf -v ${ov}tickIntervalSeconds '%04d' "${d}{${ov}tickInterval}"
+        ${ov}tickIntervalSeconds="${${ov}tickIntervalSeconds%???}.${${ov}tickIntervalSeconds#${${ov}tickIntervalSeconds%???}}"
+        
+        ${ov}tickIntervalSeconds=${q}${q}
+        ${ov}refreshInterval=10
+      }
       case ${q}${d}{${omv}key}${q} in
 #[of]:        escaped keys
         ${d}'\e')
@@ -316,9 +386,8 @@ function screen.open {
           ${omv}key=tab
           ;;&
 #[cf]
-#[of]:        refresh timeout
+#[of]:        tick)
         '')
-          ${o}.refresh
           ;;
 #[cf]
 #[of]:        *)
@@ -334,6 +403,10 @@ function screen.open {
 #[cf]
       esac
     done
+#[c]
+#[c]trigger ever x seconds .5,1, etc.
+#[c]
+#[c]${ov}refresh
 #[cf]
     ${c}.mouseDisable
 
@@ -372,6 +445,7 @@ function screen.refresh {
   "
 }
 #[cf]
+#[c]
 #[of]:  function screen.bindObject {
 function screen.bindObject {
 #[c]object
@@ -457,6 +531,38 @@ function screen.delObject {
   "
 }
 #[cf]
+#[c]
+#[of]:  function screen.timerEventAdd {
+function screen.timerEventAdd {
+#[c]object objectname event_to_trigger tick_devisor
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}left ${omv}top ${omv}width ${omv}height
+    typeset ${omv}objectId
+    typeset ${omv}objectName
+
+    ${omv}objectName=${q}${d}1${q}
+    ${omv}left=${q}${d}2${q}
+    ${omv}top=${q}${d}3${q}
+    ${d}{${omv}objectName}.getHeight ${omv}height
+    ${d}{${omv}objectName}.getWidth ${omv}width
+
+    ${ov}objectIdPool.getid ${omv}objectId
+
+    ${ov}objectNames[${d}{${omv}objectId}]=${q}${d}{${omv}objectName}${q}
+    ${ov}objectPositions[${d}((4*${omv}objectId+0))]=${q}${d}{${omv}left}${q}
+    ${ov}objectPositions[${d}((4*${omv}objectId+1))]=${q}${d}((${omv}left + ${omv}width-1))${q}
+    ${ov}objectPositions[${d}((4*${omv}objectId+2))]=${q}${d}{${omv}top}${q}
+    ${ov}objectPositions[${d}((4*${omv}objectId+3))]=${q}${d}((${omv}top + ${omv}height-1))${q}
+    
+    return 0
+  "
+}
+#[cf]
+#[c]
 #[of]:  function screen.processEvent {
 function screen.processEvent {
 #[c]object -|var
@@ -539,6 +645,7 @@ function screen.runEventAction {
   "
 }
 #[cf]
+#[c]
 #[of]:  function screen.focusSelectByName {
 function screen.focusSelectByName {
 #[of]:  set common environment
@@ -912,9 +1019,9 @@ function screen.constructor {
   eval "
 #[of]:    function ${o}.bindEventAction {
 function ${o}.bindEventAction {
-  typeset i
-  for i in ${q}${d}{@:1:${d}#-1}${q} ; do
-    ${ov}inputEventActions.setkey ${q}${d}{i}${q} ${q}${d}{@: -1}${q}
+  typeset _i
+  for _i in ${q}${d}{@:1:${d}#-1}${q} ; do
+    ${ov}inputEventActions.setkey ${q}${d}{_i}${q} ${q}${d}{@: -1}${q}
   done
 }
 #[cf]
@@ -947,39 +1054,57 @@ function ${o}.getWidth {
   fi
 }
 #[cf]
-#[of]:    function ${o}.setRefreshTimeout {
-function ${o}.setRefreshTimeout {
+#[of]:    function ${o}.setRefreshInterval {
+function ${o}.setRefreshInterval {
   if [[ -z ${q}${d}1${q} || ${q}${d}1${q} = 0 ]] ; then
-    ${ov}keytimeout=${q}${q}
+    ${ov}refreshInterval=${q}1${q}
   else
-    ${ov}keytimeout=${q}${d}1${q}
+    ${ov}refreshInterval=${q}${d}1${q}
   fi
 }
 #[cf]
-#[of]:    function ${o}.exitScreen {
-function ${o}.exitScreen {
-  ${ov}flagExitScreen=1
+#[of]:    function ${o}.setEventResolution {
+function ${o}.setEventResolution {
+  if [[ -z ${q}${d}1${q} || ${q}${d}1${q} = 0 ]] ; then
+    ${ov}tickIntervalSeconds=${q}${q}
+  else
+    ${ov}tickIntervalSeconds=${q}${d}1${q}
+  fi
 }
 #[cf]
-#[of]:    function ${o}.disableRefreshTimeout {
-function ${o}.disableRefreshTimeout {
-  ${ov}keytimeout=${q}${q}
+#[of]:    function ${o}.exit {
+function ${o}.exit {
+  ${ov}flagExit=1
 }
 #[cf]
 #[of]:    object data
+typeset _precision
 newvar ${ov}objectPositions ${ov}objectNames
 newvar ${ov}previousMouseButtonName ${ov}previousMouseX ${ov}previousMouseY
 newvar ${ov}focusedObjectIndex ${ov}focusedObjectName ${ov}focusList ${ov}focusListMerged
-newvar ${ov}keytimeout
-newvar ${ov}flagExitScreen
+newvar ${ov}flagExit
+
+newvar ${ov}tick ${ov}tickMax ${ov}tickEvents ${ov}tickResolution ${ov}refreshInterval
 
 new hash ${ov}objects
 new hash ${ov}inputEventActions
 new referenceid ${ov}objectIdPool
 
-${ov}flagExitScreen=0
-${ov}keytimeout=${q}${q}
+${ov}flagExit=0
 ${ov}focusedObjectIndex=0
+
+
+_precision=100
+${ov}tick=0
+${ov}tickInterval=1000
+${ov}cycleLength=$((24*60*60))
+
+${ov}tickMax=$((_precision*1000/${ov}tickInterval*${ov}cycleLength/_precision))
+printf -v ${ov}tickIntervalSeconds '%04d' "${d}{${ov}tickInterval}"
+${ov}tickIntervalSeconds="${${ov}tickIntervalSeconds%???}.${${ov}tickIntervalSeconds#${${ov}tickIntervalSeconds%???}}"
+
+${ov}tickResolution=${q}${q}
+${ov}refreshInterval=10
 
 #[cf]
   "
@@ -1017,6 +1142,13 @@ function window.drawBorder {
 
     ${o}.setcursorxy 0 0
     printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tl_br}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tr_bl}${q}
+
+#[c]    for ((${omv}index=1;${omv}index<${ov}height-1;${omv}index++)) ; do
+#[c]      ${o}.setcursorxy 0 ${d}{${omv}index}
+#[c]      echo -n ${q}${d}{${omv}v}${q}
+#[c]      ${o}.setcursorxy $((${ov}width-1)) ${d}{${omv}index}
+#[c]      echo -n ${q}${d}{${omv}v}${q}
+#[c]    done
 
     ${o}.setcursorxy 0 1
     printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
@@ -1357,19 +1489,19 @@ function window.constructor {
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
-  typeset i
-  for i in height width title drawBorder borderStyle ; do
+  typeset _i
+  for _i in height width title drawBorder borderStyle ; do
     eval "
-      newvar ${ov}${i}
-      function ${o}.set${i^} {
-        ${ov}${i}=${q}${d}1${q}
+      newvar ${ov}${_i}
+      function ${o}.set${_i^} {
+        ${ov}${_i}=${q}${d}1${q}
       }
 
-      function ${o}.get${i^} {
+      function ${o}.get${_i^} {
         if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
-          echo ${q}${d}{${ov}${i}}${q}
+          echo ${q}${d}{${ov}${_i}}${q}
         else
-          eval ${d}1=\\${q}\\${d}{${ov}${i}}\\${q}
+          eval ${d}1=\\${q}\\${d}{${ov}${_i}}\\${q}
         fi
       }
     "
@@ -1377,9 +1509,9 @@ function window.constructor {
   eval "
 #[of]:    function ${o}.bindEventAction {
 function ${o}.bindEventAction {
-  typeset i
-  for i in ${q}${d}{@:1:${d}#-1}${q} ; do
-    ${ov}inputEventActions.setkey ${q}${d}{i}${q} ${q}${d}{@: -1}${q}
+  typeset _i
+  for _i in ${q}${d}{@:1:${d}#-1}${q} ; do
+    ${ov}inputEventActions.setkey ${q}${d}{_i}${q} ${q}${d}{@: -1}${q}
   done
 }
 #[cf]
@@ -1390,6 +1522,7 @@ function ${o}.delEventAction {
 #[cf]
 #[of]:    object data
 newvar ${ov}objectPositions ${ov}leftOffset ${ov}topOffset
+newvar ${ov}leftOffset ${ov}topOffset
 new referenceid ${ov}objectIdPool
 new hash ${ov}inputEventActions
 
@@ -1417,41 +1550,32 @@ function button.drawBorder {
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
-    ((${ov}height>2)) && {
-      typeset ${omv}line  ${omv}h ${omv}v  ${omv}tl_br ${omv}tr_bl ${omv}index
-      case ${q}${d}{${ov}borderStyle}${q} in
-        1)
-          ${omv}h='-'
-          ${omv}v='|'
-          ${omv}tl_br='/'
-          ${omv}tr_bl='\'
-          ;;
-        *)
-          ${omv}h='*'
-          ${omv}v='*'
-          ${omv}tl_br='*'
-          ${omv}tr_bl='*'
-          ;;
-      esac
+    typeset ${omv}line  ${omv}h ${omv}v  ${omv}tl_br ${omv}tr_bl ${omv}index
+    case ${q}${d}{${ov}borderStyle}${q} in
+      1)
+        ${omv}h='-'
+        ${omv}v='|'
+        ${omv}tl_br='/'
+        ${omv}tr_bl='\'
+        ;;
+      *)
+        ${omv}h='*'
+        ${omv}v='*'
+        ${omv}tl_br='*'
+        ${omv}tr_bl='*'
+        ;;
+    esac
 
-      ${o}.setcursorxy 0 0
-      printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tl_br}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tr_bl}${q}
+    ${o}.setcursorxy 0 0
+    printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tl_br}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tr_bl}${q}
 
-      for ((${omv}index=1;${omv}index<${ov}height-1;${omv}index++)) ; do
-        ${o}.setcursorxy 0 ${d}{${omv}index}
-        echo -n ${q}${d}{${omv}v}${q}
-        ${o}.setcursorxy $((${ov}width-1)) ${d}{${omv}index}
-        echo -n ${q}${d}{${omv}v}${q}
-      done
+    ${o}.setcursorxy 0 1
+    printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
+    ${o}.setcursorxy ${d}((${ov}width-1)) 1
+    printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
 
-#[c]      ${o}.setcursorxy 0 1
-#[c]      printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
-#[c]      ${o}.setcursorxy ${d}((${ov}width-1)) 1
-#[c]      printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
-
-      ${o}.setcursorxy 0 ${d}((${ov}height-1))
-      printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tr_bl}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tl_br}${q}
-    }
+    ${o}.setcursorxy 0 ${d}((${ov}height-1))
+    printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tr_bl}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tl_br}${q}
 
     return 0
   "
@@ -1491,7 +1615,7 @@ function button.refresh {
 
     [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${omv}hasFocus=1 || ${omv}hasFocus=0
     
-    ${o}.drawBorder
+    ((${ov}drawBorder)) && ((${ov}height>2)) && ${o}.drawBorder
 
     ((${omv}hasFocus)) && screen.styleSetReverse
     
@@ -1552,19 +1676,19 @@ function button.constructor {
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
-  typeset i
-  for i in height width ; do
+  typeset _i
+  for _i in height width drawBorder borderStyle ; do
     eval "
-      newvar ${ov}${i}
-      function ${o}.set${i^} {
-        ${ov}${i}=${q}${d}1${q}
+      newvar ${ov}${_i}
+      function ${o}.set${_i^} {
+        ${ov}${_i}=${q}${d}1${q}
       }
 
-      function ${o}.get${i^} {
+      function ${o}.get${_i^} {
         if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
-          echo ${q}${d}{${ov}${i}}${q}
+          echo ${q}${d}{${ov}${_i}}${q}
         else
-          eval ${d}1=\\${q}\\${d}{${ov}${i}}\\${q}
+          eval ${d}1=\\${q}\\${d}{${ov}${_i}}\\${q}
         fi
       }
     "
@@ -1572,9 +1696,9 @@ function button.constructor {
   eval "
 #[of]:    function ${o}.bindEventAction {
 function ${o}.bindEventAction {
-  typeset i
-  for i in ${q}${d}{@:1:${d}#-1}${q} ; do
-    ${ov}inputEventActions.setkey ${q}${d}{i}${q} ${q}${d}{@: -1}${q}
+  typeset _i
+  for _i in ${q}${d}{@:1:${d}#-1}${q} ; do
+    ${ov}inputEventActions.setkey ${q}${d}{_i}${q} ${q}${d}{@: -1}${q}
   done
 }
 #[cf]
@@ -1594,7 +1718,11 @@ function ${o}.setTitle {
   ${ov}title=${q}${d}1${q}
 
   if ((${ov}width==0)) ; then
-    ${ov}width=${d}((${d}{#${ov}title}+4))
+    if ((${ov}drawBorder)) && ((${ov}height>2)) ; then
+      ${ov}width=${d}((${d}{#${ov}title}+4))
+    else
+      ${ov}width=${d}{#${ov}title}
+    fi
   else
     screen.trimString ${ov}title ${d}{${ov}width} ${q}${d}{${ov}title}${q}
   fi
@@ -1611,12 +1739,13 @@ function ${o}.getTitle {
 #[cf]
 #[of]:    object data
 newvar ${ov}height ${ov}width ${ov}title
+newvar ${ov}leftOffset ${ov}topOffset
 new hash ${ov}inputEventActions
 
 ${o}.setWidth ${q}${d}{1:-0}${q}
 ${o}.setHeight ${q}${d}{2:-1}${q}
 
-${ov}drawBorder=0
+${ov}drawBorder=1
 ${ov}borderStyle=1
 #[cf]
   "
@@ -1655,6 +1784,10 @@ function progressSlider.refresh {
 #[cf]
   eval "
     typeset ${omv}hasFocus ${omv}timeSliderLength ${omv}songLength ${omv}songTimePlayed ${omv}songPercentagePlayed
+    ${ov}leftOffset=${q}${d}{1}${q}
+    ${ov}topOffset=${q}${d}{2}${q}
+
+    ${o}.runEventAction refresh
 
     [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${omv}hasFocus=1 || ${omv}hasFocus=0
     ! ((${omv}hasFocus)) && ${cmv}timeSlider=${q}${d}{${ov}timeSlider}${q}
@@ -1730,9 +1863,9 @@ function progressSlider.constructor {
   eval "
 #[of]:    function ${o}.bindEventAction {
 function ${o}.bindEventAction {
-  typeset i
-  for i in ${q}${d}{@:1:${d}#-1}${q} ; do
-    ${ov}inputEventActions.setkey ${q}${d}{i}${q} ${q}${d}{@: -1}${q}
+  typeset _i
+  for _i in ${q}${d}{@:1:${d}#-1}${q} ; do
+    ${ov}inputEventActions.setkey ${q}${d}{_i}${q} ${q}${d}{@: -1}${q}
   done
 }
 #[cf]
@@ -1793,8 +1926,9 @@ function ${o}.getTitle {
 #[cf]
 #[of]:    object data
 newvar ${ov}height ${ov}width ${ov}title
-new hash ${ov}inputEventActions
+newvar ${ov}leftOffset ${ov}topOffset
 newvar ${ov}timeSlider ${ov}timeSliderErase ${ov}timeSliderFocused ${ov}timeSliderLength
+new hash ${ov}inputEventActions
 
 ${ov}width=${q}${d}{1:-82}${q}
 ${ov}height=1
@@ -2002,19 +2136,19 @@ function fileBrowser.constructor {
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
-  typeset i
-  for i in height width pwd ; do
+  typeset _i
+  for _i in height width pwd ; do
     eval "
-      newvar ${ov}${i}
-      function ${o}.set${i^} {
-        ${ov}${i}=${q}${d}1${q}
+      newvar ${ov}${_i}
+      function ${o}.set${_i^} {
+        ${ov}${_i}=${q}${d}1${q}
       }
 
-      function ${o}.get${i^} {
+      function ${o}.get${_i^} {
         if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
-          echo ${q}${d}{${ov}${i}}${q}
+          echo ${q}${d}{${ov}${_i}}${q}
         else
-          eval ${d}1=\\${q}\\${d}{${ov}${i}}\\${q}
+          eval ${d}1=\\${q}\\${d}{${ov}${_i}}\\${q}
         fi
       }
     "
@@ -2022,9 +2156,9 @@ function fileBrowser.constructor {
   eval "
 #[of]:    function ${o}.bindEventAction {
 function ${o}.bindEventAction {
-  typeset i
-  for i in ${q}${d}{@:1:${d}#-1}${q} ; do
-    ${ov}inputEventActions.setkey ${q}${d}{i}${q} ${q}${d}{@: -1}${q}
+  typeset _i
+  for _i in ${q}${d}{@:1:${d}#-1}${q} ; do
+    ${ov}inputEventActions.setkey ${q}${d}{_i}${q} ${q}${d}{@: -1}${q}
   done
 }
 #[cf]
@@ -2071,6 +2205,7 @@ function ${o}.pageDown {
 #[cf]
 #[of]:    object data
 newvar ${ov}height ${ov}width ${ov}leftOffset ${ov}topOffset
+newvar ${ov}leftOffset ${ov}topOffset
 newvar ${ov}fileList ${ov}fileListTrimmed ${ov}fileListIndexOffset
 newvar ${ov}pwd ${ov}selectedFile
 new hash ${ov}inputEventActions
