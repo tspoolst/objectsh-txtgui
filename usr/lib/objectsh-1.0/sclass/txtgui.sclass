@@ -10,47 +10,15 @@
 #[cf]
 #[c]
 #[of]:separate refresh events
-#[c]separate refresh events
-#[c]  things that need to update the screen vs things that don't
-#[c]  ${ov}tickResolution=seconds
-#[c]  ${ov}refreshInterval
-#[c]add ability to set timer events
 #[c]add individual control screen updates
-#[c]
-#[c]registering with the screen object is the easiest table lookup
-#[c]
-#[c]want to check if the current file is still playing every tick or evry other tick
-#[c]  s1.timerEventAdd objectname event_to_trigger tick_devisor
-#[c]
-#[c]have a list of objects with timer events
-#[c]
-#[c]interlaced array = structure?
-#[c]for ((i=0;i<size:i=i+3)) ; do
-#[c]  ((tick%a[i]==0)) && a[i+1].runEventAction a[+2]
-#[c]done
-#[c]
-#[c]gives us our max time between timer event excutions at 1 second intervals 24hours
-#[c]ticks=$((1000/a*10))
-#[c]((tick+=1))
-#[c]((tick>86400)) && tick=0
-#[c]
-#[c]
-#[c]i=1000;t=10;p=1000
-#[c]ticks=$((p*1000/i*t/p))
-#[c]echo $ticks
-#[c]printf -v i '%04d' "$i"
-#[c]echo $i
-#[c]i="${i%???}.${i#${i%???}}"
-#[c]echo "$i"
-#[c]for ((j=0;j<ticks;j++));do echo -n "$j ";sleep $i;done
-#[c]
-#[c]
-#[c]time bash -c 'i=1000;t=10;p=1000;ticks=$((p*1000/i*t/p));echo $ticks;printf -v i '%04d' "$i";echo $i;i="${i%???}.${i#${i%???}}";echo "$i";for ((j=0;j<ticks;j++));do echo -n "$j ";sleep $i;done;echo'
+#[c]  already exist if $(o).refresh is called on a control object
+#[c]    however most controls don't have code to erase that block of screen first
+#[c]  if refresh called on a screen/window all children of that screen/window are updated
 #[cf]
 #[c]
 #[c]
 #[c]implement layer selection
-#[c]  all abject default to layer 0 (the lowest layer)
+#[c]  all objects default to layer 0 (the lowest layer)
 #[c]  
 #[c]
 #[c]build
@@ -94,13 +62,13 @@ function screen.open {
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
-    typeset _i
-    typeset ${omv}refreshInterval ${omv}key ${omv}mouse
+    typeset ${omv}key ${omv}mouse
     typeset ${omv}mouseEvent ${omv}mouseEvents ${omv}mouseButtonId ${omv}mouseButtonName
     typeset ${omv}mouseXStart ${omv}mouseYStart ${omv}mouseX ${omv}mouseY
     typeset ${omv}currentRelX ${omv}currentRelY ${omv}relX ${omv}relY
     typeset ${omv}mouseButtonState ${omv}shift ${omv}alt ${omv}ctrl
     typeset ${omv}objectName ${omv}objectId
+    typeset ${omv}triggerId
 
     ${omv}refreshInterval=${q}${d}{${ov}refreshInterval}${q}
 
@@ -116,33 +84,16 @@ function screen.open {
         break
       }
       read -s -N 1 -r ${d}{${ov}tickIntervalSeconds:+-t ${d}{${ov}tickIntervalSeconds}} ${omv}key || {
-#[c]
         ((${ov}tick+=1))
         ((${ov}tick>${ov}tickMax)) && ${ov}tick=0
-        
-        for ((_i=0;_i<${d}{#${ov}tickEvents}:_i=_i+3)) ; do
-          ((${ov}tick%${ov}tickEvents[_i]==0)) && ${d}{${ov}tickEvents[${d}((_i+1))]}.runEventAction ${d}{${ov}tickEvents[${d}((_i+2))]}
+
+        for ${omv}triggerId in ${q}${d}{!${ov}timerTriggerIdList[@]}${q} ; do
+          ((${ov}tick%${ov}tickTriggers[${d}((${omv}triggerId*3))]==0)) && {
+            ${d}{${ov}tickTriggers[${d}((${omv}triggerId*3+1))]}.runEventAction ${d}{${ov}tickTriggers[${d}((${omv}triggerId*3+2))]}
+          }
         done
-        
-        
-        ((${omv}refreshInterval==0)) && {
-          ${omv}refreshInterval=${q}${d}{${ov}refreshInterval}${q}
-          ${o}.refresh
-        }
-        echo ${q}${d}{${omv}refreshInterval}${q}
-        ((${omv}refreshInterval-=1))
-#[c]        
-        _precision=100
-        ${ov}tick=0
-        ${ov}tickInterval=1000
-        ${ov}cycleLength=$((24*60*60))
-        
-        ${ov}tickMax=$((_precision*1000/${ov}tickInterval*${ov}cycleLength/_precision))
-        printf -v ${ov}tickIntervalSeconds '%04d' "${d}{${ov}tickInterval}"
-        ${ov}tickIntervalSeconds="${${ov}tickIntervalSeconds%???}.${${ov}tickIntervalSeconds#${${ov}tickIntervalSeconds%???}}"
-        
-        ${ov}tickIntervalSeconds=${q}${q}
-        ${ov}refreshInterval=10
+
+        ((${ov}tick%${ov}refreshInterval==0)) && ${o}.refresh
       }
       case ${q}${d}{${omv}key}${q} in
 #[of]:        escaped keys
@@ -403,10 +354,6 @@ function screen.open {
 #[cf]
       esac
     done
-#[c]
-#[c]trigger ever x seconds .5,1, etc.
-#[c]
-#[c]${ov}refresh
 #[cf]
     ${c}.mouseDisable
 
@@ -532,32 +479,47 @@ function screen.delObject {
 }
 #[cf]
 #[c]
-#[of]:  function screen.timerEventAdd {
-function screen.timerEventAdd {
+#[of]:  function screen.timerTriggerAdd {
+function screen.timerTriggerAdd {
 #[c]object objectname event_to_trigger tick_devisor
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
-    typeset ${omv}left ${omv}top ${omv}width ${omv}height
-    typeset ${omv}objectId
-    typeset ${omv}objectName
+    typeset ${omv}triggerId
 
-    ${omv}objectName=${q}${d}1${q}
-    ${omv}left=${q}${d}2${q}
-    ${omv}top=${q}${d}3${q}
-    ${d}{${omv}objectName}.getHeight ${omv}height
-    ${d}{${omv}objectName}.getWidth ${omv}width
+    ${ov}timerTriggerIdPool.getid ${omv}triggerId
+    ${ov}timerTriggerIdList[${d}{${omv}triggerId}]=''
 
-    ${ov}objectIdPool.getid ${omv}objectId
-
-    ${ov}objectNames[${d}{${omv}objectId}]=${q}${d}{${omv}objectName}${q}
-    ${ov}objectPositions[${d}((4*${omv}objectId+0))]=${q}${d}{${omv}left}${q}
-    ${ov}objectPositions[${d}((4*${omv}objectId+1))]=${q}${d}((${omv}left + ${omv}width-1))${q}
-    ${ov}objectPositions[${d}((4*${omv}objectId+2))]=${q}${d}{${omv}top}${q}
-    ${ov}objectPositions[${d}((4*${omv}objectId+3))]=${q}${d}((${omv}top + ${omv}height-1))${q}
+    ${ov}tickTriggers[${d}((${omv}triggerId*3))]=${q}${d}3${q}
+    ${ov}tickTriggers[${d}((${omv}triggerId*3+1))]=${q}${d}1${q}
+    ${ov}tickTriggers[${d}((${omv}triggerId*3+2))]=${q}${d}2${q}
     
+    return 0
+  "
+}
+#[cf]
+#[of]:  function screen.timerTriggerDel {
+function screen.timerTriggerDel {
+#[c]object objectname event_to_trigger
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}triggerName ${omv}triggerId
+
+    ${omv}triggerName=${q}${d}1_${d}2${q}
+
+    for ${omv}triggerId in ${q}${d}{!${ov}timerTriggerIdList[@]}${q} ; do
+      if [[ ${q}${d}{${omv}triggerName}${q} = ${q}${d}{${ov}tickTriggers[${d}((${omv}triggerId*3+1))]}_${d}{${ov}tickTriggers[${d}((${omv}triggerId*3+2))]}${q} ]] ; then
+        unset ${ov}timerTriggerIdList[${d}{${omv}triggerId}]
+        ${ov}timerTriggerIdPool.delid ${d}{${omv}triggerId}
+        break
+      fi
+    done
+
     return 0
   "
 }
@@ -607,23 +569,6 @@ function screen.processEvent {
             echo ${d}{${omv}currentObjectName}.runEventAction ${q}${d}{${omv}event}${q} ${d}{${omv}currentRelX} ${d}{${omv}currentRelY} ${d}{${omv}mouseX} ${d}{${omv}mouseY}
           fi
     }
-  "
-}
-#[cf]
-#[of]:  function screen.triggerEvent {
-function screen.triggerEvent {
-#[c]object objectname key [relX] [relY]
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-    ${ov}inputEventActions.getkey ! ${q}${d}2${q} && ${omv}objectName=${o} || ${omv}objectName=${q}${d}1${q}
-    ${o}.processEvent \
-      ${q}${d}{${omv}objectName}${q} \
-      ${q}${d}2${q} \
-      0 0 || \
-    echo ${q}ascii ---${d}{${omv}key}---chr---${d}{${omv}objectName:-${o}}${q}
   "
 }
 #[cf]
@@ -923,7 +868,7 @@ function ${c}.setScreenHeight {
   #sudo apt install xterm
   typeset ${cmv}height
   
-  if isset TERM && [[ -z "${d}{TERM##xterm*}" ]] && which resize &>/dev/null ; then
+  if isset TERM && [[ -z ${q}${d}{TERM##xterm*}${q} ]] && which resize &>/dev/null ; then
     ${cmv}height=${d}1
     resize -s ${d}{${cmv}height} ${d}{${cv}width} &>/dev/null || return 1
     ${cv}height=${d}{${cmv}height}
@@ -939,7 +884,7 @@ function ${c}.setScreenWidth {
   #sudo apt install xterm
   typeset ${cmv}width
 
-  if isset TERM && [[ -z "${d}{TERM##xterm*}" ]] && which resize &>/dev/null ; then
+  if isset TERM && [[ -z ${q}${d}{TERM##xterm*}${q} ]] && which resize &>/dev/null ; then
     ${cmv}width=${d}1
     resize -s ${d}{${cv}height} ${d}{${cmv}width} &>/dev/null || return 1
     ${cv}width=${d}{${cmv}width}
@@ -1063,12 +1008,18 @@ function ${o}.setRefreshInterval {
   fi
 }
 #[cf]
-#[of]:    function ${o}.setEventResolution {
-function ${o}.setEventResolution {
+#[of]:    function ${o}.setTickInterval {
+function ${o}.setTickInterval {
+  typeset _precision
   if [[ -z ${q}${d}1${q} || ${q}${d}1${q} = 0 ]] ; then
     ${ov}tickIntervalSeconds=${q}${q}
   else
-    ${ov}tickIntervalSeconds=${q}${d}1${q}
+    _precision=100
+    ${ov}tick=0
+    ${ov}tickInterval=${q}${d}1${q}
+    ${ov}tickMax=${d}((_precision*1000/${ov}tickInterval*${ov}cycleLength/_precision))
+    printf -v ${ov}tickIntervalSeconds '%04d' ${q}${d}{${ov}tickInterval}${q}
+    ${ov}tickIntervalSeconds=${q}${d}{${ov}tickIntervalSeconds%???}.${d}{${ov}tickIntervalSeconds#${d}{${ov}tickIntervalSeconds%???}}${q}
   fi
 }
 #[cf]
@@ -1078,32 +1029,34 @@ function ${o}.exit {
 }
 #[cf]
 #[of]:    object data
-typeset _precision
 newvar ${ov}objectPositions ${ov}objectNames
 newvar ${ov}previousMouseButtonName ${ov}previousMouseX ${ov}previousMouseY
-newvar ${ov}focusedObjectIndex ${ov}focusedObjectName ${ov}focusList ${ov}focusListMerged
-newvar ${ov}flagExit
-
-newvar ${ov}tick ${ov}tickMax ${ov}tickEvents ${ov}tickResolution ${ov}refreshInterval
 
 new hash ${ov}objects
 new hash ${ov}inputEventActions
 new referenceid ${ov}objectIdPool
 
+newvar ${ov}flagExit
 ${ov}flagExit=0
+
+newvar ${ov}focusedObjectIndex ${ov}focusedObjectName ${ov}focusList ${ov}focusListMerged
 ${ov}focusedObjectIndex=0
 
 
+typeset _precision
+newvar ${ov}tick ${ov}tickInterval ${ov}cycleLength ${ov}tickMax ${ov}tickIntervalSeconds
+newvar ${ov}timerTriggerIdList ${ov}tickTriggers
+new referenceid ${ov}timerTriggerIdPool
 _precision=100
 ${ov}tick=0
 ${ov}tickInterval=1000
-${ov}cycleLength=$((24*60*60))
+${ov}cycleLength=${d}((24*60*60))
 
-${ov}tickMax=$((_precision*1000/${ov}tickInterval*${ov}cycleLength/_precision))
-printf -v ${ov}tickIntervalSeconds '%04d' "${d}{${ov}tickInterval}"
-${ov}tickIntervalSeconds="${${ov}tickIntervalSeconds%???}.${${ov}tickIntervalSeconds#${${ov}tickIntervalSeconds%???}}"
+${ov}tickMax=${d}((_precision*1000/${ov}tickInterval*${ov}cycleLength/_precision))
+printf -v ${ov}tickIntervalSeconds '%04d' ${q}${d}{${ov}tickInterval}${q}
+${ov}tickIntervalSeconds=${q}${d}{${ov}tickIntervalSeconds%???}.${d}{${ov}tickIntervalSeconds#${d}{${ov}tickIntervalSeconds%???}}${q}
 
-${ov}tickResolution=${q}${q}
+newvar ${ov}refreshInterval
 ${ov}refreshInterval=10
 
 #[cf]
@@ -1608,8 +1561,10 @@ function button.refresh {
 #[cf]
   eval "
     typeset ${omv}hasFocus ${omv}length
-    ${ov}leftOffset=${q}${d}{1}${q}
-    ${ov}topOffset=${q}${d}{2}${q}
+    [[ -n ${q}${d}{2}${q} ]] && {
+      ${ov}leftOffset=${q}${d}{1}${q}
+      ${ov}topOffset=${q}${d}{2}${q}
+    }
 
     ${o}.runEventAction refresh
 
@@ -1783,15 +1738,19 @@ function progressSlider.refresh {
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
-    typeset ${omv}hasFocus ${omv}timeSliderLength ${omv}songLength ${omv}songTimePlayed ${omv}songPercentagePlayed
-    ${ov}leftOffset=${q}${d}{1}${q}
-    ${ov}topOffset=${q}${d}{2}${q}
+    typeset ${omv}timeSliderLength ${omv}songLength ${omv}songTimePlayed ${omv}songPercentagePlayed
+    [[ -n ${q}${d}{2}${q} ]] && {
+      ${ov}leftOffset=${q}${d}{1}${q}
+      ${ov}topOffset=${q}${d}{2}${q}
+    }
 
     ${o}.runEventAction refresh
 
-    [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${omv}hasFocus=1 || ${omv}hasFocus=0
-    ! ((${omv}hasFocus)) && ${cmv}timeSlider=${q}${d}{${ov}timeSlider}${q}
-    ((${omv}hasFocus)) && ${cmv}timeSlider=${q}${d}{${ov}timeSliderFocused}${q}
+    [[ -n ${q}${d}3${q} && -n ${q}${d}4${q} ]] && {
+      [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${ov}hasFocus=1 || ${ov}hasFocus=0
+    }
+    ! ((${ov}hasFocus)) && ${cmv}timeSlider=${q}${d}{${ov}timeSlider}${q}
+    ((${ov}hasFocus)) && ${cmv}timeSlider=${q}${d}{${ov}timeSliderFocused}${q}
 
     ${omv}timeSliderLength=${d}((${ov}timeSliderLength-3))
     ${omv}songLength=${d}(echo '{ ${q}command${q}: [${q}get_property${q}, ${q}duration${q}] }' | socat - /tmp/mpvsocket 2>/dev/null | grep -oP '${q}data${q}:\\K[^,]+')
@@ -1812,7 +1771,23 @@ function progressSlider.refresh {
     [[ -z ${q}${d}{${omv}songPercentagePlayed}${q} ]] && ${omv}songPercentagePlayed=0
   
 #[c]    echo -ne ${q}${d}{${ov}timeSliderErase}${q}
+    ${o}.setcursorxy 0 0
     echo -n ${q}<${d}{${cmv}timeSlider:0:${d}((${omv}songPercentagePlayed*${omv}timeSliderLength/100))}${d}(printf '%02d%%' ${q}${d}{${omv}songPercentagePlayed#0}${q})${d}{${cmv}timeSlider:${d}((${omv}songPercentagePlayed*${omv}timeSliderLength/100)):${d}((${omv}timeSliderLength-(${omv}songPercentagePlayed*${omv}timeSliderLength/100) ))}>${q}
+  "
+}
+#[cf]
+#[of]:  function progressSlider.setcursorxy {
+function progressSlider.setcursorxy {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}x ${omv}y
+    ${omv}x=${d}1
+    ${omv}y=${d}2
+    echo -en ${q}\\\\033[${d}((${ov}topOffset+1+${omv}y));${d}((${ov}leftOffset+1+${omv}x))H${q}
+    return 0
   "
 }
 #[cf]
@@ -1928,11 +1903,13 @@ function ${o}.getTitle {
 newvar ${ov}height ${ov}width ${ov}title
 newvar ${ov}leftOffset ${ov}topOffset
 newvar ${ov}timeSlider ${ov}timeSliderErase ${ov}timeSliderFocused ${ov}timeSliderLength
+newvar ${ov}hasFocus 
 new hash ${ov}inputEventActions
 
 ${ov}width=${q}${d}{1:-82}${q}
 ${ov}height=1
 
+${ov}hasFocus=0
 #[cf]
     ${o}.buildSlider
   "
