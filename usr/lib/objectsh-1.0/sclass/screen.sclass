@@ -31,7 +31,7 @@
 #[c]
 #[c]modify
 #[c]  label - perhaps rename all button references to label
-#[c]    a button is just a label (usually with a border draw) with key/mouse events tagged to it.
+#[c]    a button is just a label (usually with a border drawn) with key/mouse events tagged to it.
 #[c]
 #[c]
 #[of]:notes
@@ -54,8 +54,10 @@
 #[of]:static methods
 #[of]:function screen.staticconstructor {
 function screen.staticconstructor {
-#[of]:  function screen.open {
-function screen.open {
+  typeset ${omv}method
+#[of]:  open {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+open {
 #[c]object -|var
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
@@ -75,6 +77,7 @@ function screen.open {
     ${c}.calcscreensize
     ${o}.focusListBuild
     ${o}.focusTriggerEnterEvent
+    clear
     ${o}.refresh
     ${c}.mouseEnable -d
 #[of]:    key process loop
@@ -93,7 +96,7 @@ function screen.open {
           }
         done
 
-        ((${ov}tick%${ov}refreshInterval==0)) && ${o}.refresh
+        ((${ov}refreshInterval>0)) && ((${ov}tick%${ov}refreshInterval==0)) && ${o}.refresh
       }
       case ${q}${d}{${omv}key}${q} in
 #[of]:        escaped keys
@@ -361,9 +364,12 @@ function screen.open {
     return 0
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  function screen.refresh {
-function screen.refresh {
+#[of]:  refresh {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+refresh {
 #[c]object -|var
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
@@ -372,10 +378,10 @@ function screen.refresh {
   eval "
     ((gl_debug>0)) && return
     typeset ${omv}objectId ${omv}left ${omv}top
+    
+#[c]    clear
 
     ${o}.runEventAction refresh
-
-    clear
 
     for ${omv}objectId in ${q}${d}{!${ov}objectNames[@]}${q} ; do
     ${omv}left=${d}{${ov}objectPositions[4*${omv}objectId+0]}
@@ -391,10 +397,13 @@ function screen.refresh {
     return 0
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
 #[c]
-#[of]:  function screen.bindObject {
-function screen.bindObject {
+#[of]:  bindObject {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+bindObject {
 #[c]object
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
@@ -422,9 +431,12 @@ function screen.bindObject {
     return 0
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  function screen.resizeObject {
-function screen.resizeObject {
+#[of]:  resizeObject {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+resizeObject {
 #[c]object
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
@@ -452,9 +464,12 @@ function screen.resizeObject {
     return 0
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  function screen.delObject {
-function screen.delObject {
+#[of]:  delObject {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+delObject {
 #[c]object
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
@@ -477,10 +492,13 @@ function screen.delObject {
     return 0
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
 #[c]
-#[of]:  function screen.timerTriggerAdd {
-function screen.timerTriggerAdd {
+#[of]:  timerTriggerAdd {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+timerTriggerAdd {
 #[c]object objectname event_to_trigger tick_devisor
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
@@ -499,9 +517,12 @@ function screen.timerTriggerAdd {
     return 0
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  function screen.timerTriggerDel {
-function screen.timerTriggerDel {
+#[of]:  timerTriggerDel {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+timerTriggerDel {
 #[c]object objectname event_to_trigger
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
@@ -523,10 +544,13 @@ function screen.timerTriggerDel {
     return 0
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
 #[c]
-#[of]:  function screen.processEvent {
-function screen.processEvent {
+#[of]:  processEvent {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+processEvent {
 #[c]object -|var
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
@@ -571,9 +595,12 @@ function screen.processEvent {
     }
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  function screen.runEventAction {
-function screen.runEventAction {
+#[of]:  runEventAction {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+runEventAction {
 #[c]object
 #[c]somehow consume ${omv}startx ${omv}starty ${omv}x ${omv}y with callout
 #[of]:  set common environment
@@ -589,10 +616,13 @@ function screen.runEventAction {
     fi
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
 #[c]
-#[of]:  function screen.focusSelectByName {
-function screen.focusSelectByName {
+#[of]:  focusSelectByName {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+focusSelectByName {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
@@ -625,9 +655,12 @@ function screen.focusSelectByName {
     fi
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  function screen.focusAdd {
-function screen.focusAdd {
+#[of]:  focusAdd {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+focusAdd {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
@@ -657,9 +690,12 @@ function screen.focusAdd {
     fi
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  function screen.focusListBuild {
-function screen.focusListBuild {
+#[of]:  focusListBuild {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+focusListBuild {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
@@ -679,9 +715,12 @@ function screen.focusListBuild {
     done
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  function screen.focusDel {
-function screen.focusDel {
+#[of]:  focusDel {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+focusDel {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
@@ -700,9 +739,12 @@ function screen.focusDel {
     done
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  function screen.focusTriggerEnterEvent {
-function screen.focusTriggerEnterEvent {
+#[of]:  focusTriggerEnterEvent {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+focusTriggerEnterEvent {
 #[c]
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
@@ -716,9 +758,12 @@ function screen.focusTriggerEnterEvent {
     ${o}.processEvent ${q}${d}{${omv}objectName}${q} ${q}focusEnter${q} 0 0 0 0
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  function screen.focusTriggerExitEvent {
-function screen.focusTriggerExitEvent {
+#[of]:  focusTriggerExitEvent {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+focusTriggerExitEvent {
 #[c]
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
@@ -732,9 +777,12 @@ function screen.focusTriggerExitEvent {
     ${o}.processEvent ${q}${d}{${omv}objectName}${q} ${q}focusExit${q} 0 0 0 0
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  function screen.focusNext {
-function screen.focusNext {
+#[of]:  focusNext {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+focusNext {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
@@ -760,7 +808,8 @@ function screen.focusNext {
     fi
   "
 }
-#[c]
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[c]
 #[c]focus needs to be by tree connection not by object name
 #[c]screen + window need to tell the object it has focus on render
@@ -804,8 +853,9 @@ function screen.focusNext {
 #[c]b 0
 #[c]a 1
 #[cf]
-#[of]:  function screen.focusPrevious {
-function screen.focusPrevious {
+#[of]:  focusPrevious {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+focusPrevious {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
@@ -831,6 +881,8 @@ function screen.focusPrevious {
     fi
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
 }
 #[cf]
@@ -934,7 +986,12 @@ function ${c}.trimString {
   typeset _s
   _s=${q}${d}3${q}
   while ((${d}(wc -L <<< ${q}${d}{_s}${q})>${d}{2}));do _s=${q}${d}{_s%?}${q};done
-  eval ${d}1=\\${q}\\${d}{_s}\\${q}
+  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+    echo ${q}${d}{_s}${q}
+  else
+    eval ${d}1=\\${q}\\${d}{_s}\\${q}
+  fi
+
 }
 #[cf]
 #[of]:    function ${c}.stringLength {
@@ -957,59 +1014,73 @@ newvar ${cv}height ${cv}width
 #[of]:dynamic methods
 #[of]:function screen.constructor {
 function screen.constructor {
-#[of]:set common environment
+#[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
-  eval "
-#[of]:    function ${o}.bindEventAction {
-function ${o}.bindEventAction {
+#[c]
+#[of]:  bindEventAction
+m=bindEventAction
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
   typeset _i
   for _i in ${q}${d}{@:1:${d}#-1}${q} ; do
     ${ov}inputEventActions.setkey ${q}${d}{_i}${q} ${q}${d}{@: -1}${q}
   done
-}
+}"
 #[cf]
-#[of]:    function ${o}.getEventAction {
-function ${o}.getEventAction {
+#[of]:  getEventAction
+m=getEventAction
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
   [[ ${q}${d}1${q} != ${q}!${q} ]] && eval ${d}1=\\${q}${o}\\${q}
   ${ov}inputEventActions.getkey ${q}${d}2${q} ${q}${d}5${q}
-}
+}"
 #[cf]
-#[of]:    function ${o}.delEventAction {
-function ${o}.delEventAction {
+#[of]:  delEventAction
+m=delEventAction
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
   ${ov}inputEventActions.delkey ${q}${d}1${q}
-}
+}"
 #[cf]
-#[of]:    function ${o}.getHeight {
-function ${o}.getHeight {
+#[of]:  getHeight
+m=getHeight
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
   if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
     echo ${q}${d}{${cv}height}${q}
   else
     eval ${d}1=\\${q}\\${d}{${cv}height}\\${q}
   fi
-}
+}"
 #[cf]
-#[of]:    function ${o}.getWidth {
-function ${o}.getWidth {
+#[of]:  getWidth
+m=getWidth
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
   if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
     echo ${q}${d}{${cv}width}${q}
   else
     eval ${d}1=\\${q}\\${d}{${cv}width}\\${q}
   fi
-}
+}"
 #[cf]
-#[of]:    function ${o}.setRefreshInterval {
-function ${o}.setRefreshInterval {
-  if [[ -z ${q}${d}1${q} || ${q}${d}1${q} = 0 ]] ; then
-    ${ov}refreshInterval=${q}1${q}
+#[of]:  setRefreshInterval
+m=setRefreshInterval
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  if [[ -z ${q}${d}1${q} ]] ; then
+    ${ov}refreshInterval=${q}0${q}
   else
     ${ov}refreshInterval=${q}${d}1${q}
   fi
-}
+}"
 #[cf]
-#[of]:    function ${o}.setTickInterval {
-function ${o}.setTickInterval {
+#[of]:  setTickInterval
+m=setTickInterval
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
   typeset _precision
   if [[ -z ${q}${d}1${q} || ${q}${d}1${q} = 0 ]] ; then
     ${ov}tickIntervalSeconds=${q}${q}
@@ -1021,13 +1092,16 @@ function ${o}.setTickInterval {
     printf -v ${ov}tickIntervalSeconds '%04d' ${q}${d}{${ov}tickInterval}${q}
     ${ov}tickIntervalSeconds=${q}${d}{${ov}tickIntervalSeconds%???}.${d}{${ov}tickIntervalSeconds#${d}{${ov}tickIntervalSeconds%???}}${q}
   fi
-}
+}"
 #[cf]
-#[of]:    function ${o}.exit {
-function ${o}.exit {
+#[of]:  exit
+m=exit
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
   ${ov}flagExit=1
-}
+}"
 #[cf]
+  eval "
 #[of]:    object data
 newvar ${ov}objectPositions ${ov}objectNames
 newvar ${ov}previousMouseButtonName ${ov}previousMouseX ${ov}previousMouseY
@@ -1124,8 +1198,10 @@ function window.refresh {
 #[cf]
   eval "
     typeset ${omv}objectId ${omv}left ${omv}top ${omv}width ${omv}height ${omv}parentFocusKey
-    ${ov}leftOffset=${q}${d}1${q}
-    ${ov}topOffset=${q}${d}2${q}
+    [[ -n ${q}${d}{2}${q} ]] && {
+      ${ov}leftOffset=${q}${d}{1}${q}
+      ${ov}topOffset=${q}${d}{2}${q}
+    }
     ${omv}parentFocusKey=${q}${d}3${q}
     ${omv}focusedObject=${q}${d}4${q}
     
@@ -1568,17 +1644,21 @@ function button.refresh {
 
     ${o}.runEventAction refresh
 
-    [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${omv}hasFocus=1 || ${omv}hasFocus=0
-    
-    ((${ov}drawBorder)) && ((${ov}height>2)) && ${o}.drawBorder
+    [[ -n ${q}${d}4${q} ]] && {
+      [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${ov}hasFocus=1 || ${ov}hasFocus=0
+    }
 
-    ((${omv}hasFocus)) && screen.styleSetReverse
+    ((${ov}hasFocus)) && screen.styleSetReverse
     
     screen.stringLength ${omv}length ${q}${d}{${ov}title}${q}
+    ${o}.setcursorxy 0 ${d}((${ov}height/2))
+    printf ${q}%${d}((${ov}width))s${q} ${q}${q}
     ${o}.setcursorxy ${d}((${ov}width/2-${d}{${omv}length}/2)) ${d}((${ov}height/2))
     echo -n ${q}${d}{${ov}title:0:${d}((${ov}width))}${q}
 
-    ((${omv}hasFocus)) && screen.styleSetNormal
+    ((${ov}hasFocus)) && screen.styleSetNormal
+
+    ((${ov}drawBorder)) && ((${ov}height>2)) && ${o}.drawBorder
   "
 }
 #[c]
@@ -1695,11 +1775,14 @@ function ${o}.getTitle {
 #[of]:    object data
 newvar ${ov}height ${ov}width ${ov}title
 newvar ${ov}leftOffset ${ov}topOffset
+newvar ${ov}txtAlignment ${ov}drawBorder ${ov}borderStyle
+newvar ${ov}hasFocus
 new hash ${ov}inputEventActions
 
 ${o}.setWidth ${q}${d}{1:-0}${q}
 ${o}.setHeight ${q}${d}{2:-1}${q}
 
+${ov}txtAlignment=0
 ${ov}drawBorder=1
 ${ov}borderStyle=1
 #[cf]
@@ -1746,9 +1829,10 @@ function progressSlider.refresh {
 
     ${o}.runEventAction refresh
 
-    [[ -n ${q}${d}3${q} && -n ${q}${d}4${q} ]] && {
+    [[ -n ${q}${d}4${q} ]] && {
       [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${ov}hasFocus=1 || ${ov}hasFocus=0
     }
+
     ! ((${ov}hasFocus)) && ${cmv}timeSlider=${q}${d}{${ov}timeSlider}${q}
     ((${ov}hasFocus)) && ${cmv}timeSlider=${q}${d}{${ov}timeSliderFocused}${q}
 
@@ -1756,6 +1840,7 @@ function progressSlider.refresh {
     ${omv}songLength=${d}(echo '{ ${q}command${q}: [${q}get_property${q}, ${q}duration${q}] }' | socat - /tmp/mpvsocket 2>/dev/null | grep -oP '${q}data${q}:\\K[^,]+')
     ${omv}songTimePlayed=${d}(echo '{ ${q}command${q}: [${q}get_property${q}, ${q}playback-time${q}] }' | socat - /tmp/mpvsocket 2>/dev/null | grep -oP '${q}data${q}:\\K[^,]+')
     [[ -z ${q}${d}{${omv}songLength}${q} || -z ${q}${d}{${omv}songTimePlayed##*[^[:digit:].]*}${q} ]] && {
+      ${o}.setcursorxy 0 0
       echo -n ${q}<00%${d}{${cmv}timeSlider:3:${d}((${omv}timeSliderLength))}>${q}
       return
     }
@@ -1800,7 +1885,7 @@ function progressSlider.buildSlider {
   eval "
     printf -v ${ov}timeSlider %${d}((${ov}width-2))s ${q}${q}
     ${ov}timeSliderErase=${q}${d}{${ov}timeSlider// /\\\\b}\\b\\b${q}
-    ${ov}timeSliderFocused=${q}${d}{${ov}timeSlider// /_}${q}
+    ${ov}timeSliderFocused=${q}${d}{${ov}timeSlider// /\\~}${q}
     ${ov}timeSlider=${q}${d}{${ov}timeSlider// /-}${q}
     ${ov}timeSliderLength=${q}${d}{#${ov}timeSlider}${q}
   "
@@ -1956,10 +2041,19 @@ function fileBrowser.refresh {
     ${o}.runEventAction refresh
 
     for ((${omv}index=${ov}fileListIndexOffset;${omv}index<${ov}height+${ov}fileListIndexOffset;${omv}index++)) ; do
+#[of]:      erase line
       ${o}.setcursorxy 0 ${d}((${omv}index-${ov}fileListIndexOffset))
-      ((${ov}selectedFile==${omv}index)) && screen.styleSetReverse
-      echo -n ${q} ${d}{${ov}fileListTrimmed[${d}{${omv}index}]}${q}
-      ((${ov}selectedFile==${omv}index)) && screen.styleSetNormal
+      printf ${q}%${d}((${ov}width-2))s${q} ${q}${q}
+#[cf]
+#[of]:      print line
+      if [[ -n ${q}${d}{${ov}indexLookupTable[${d}{${omv}index}]}${q} ]] ; then
+        ${o}.setcursorxy 0 ${d}((${omv}index-${ov}fileListIndexOffset))
+  
+        ((${ov}selectedFile==${d}{${ov}indexLookupTable[${d}{${omv}index}]})) && screen.styleSetReverse
+        echo -n ${q} ${d}{${ov}fileListTrimmed[${d}{${ov}indexLookupTable[${d}{${omv}index}]}]}${q}
+        ((${ov}selectedFile==${d}{${ov}indexLookupTable[${d}{${omv}index}]})) && screen.styleSetNormal
+      fi
+#[cf]
     done
   "
 }
@@ -1975,7 +2069,7 @@ function fileBrowser.updateFileList {
 
     ${omv}IFS=${q}${d}{IFS}${q}
     IFS=${d}'\\n'
-    ${ov}fileList=( .. ${d}( cd ${q}${d}{${ov}pwd}${q};{ find . -maxdepth 1 -type d | sort;find . -maxdepth 1 -type f | sort; } | grep -oP '^\\./\\K.*') )
+    ${ov}fileList=( ${d}( cd ${q}${d}{${ov}pwd}${q};{ find . -maxdepth 1 -type d | sort;find . -maxdepth 1 -type f | sort; } | grep -oP '^\\./\\K.*') )
     IFS=${q}${d}{${omv}IFS}${q}
 
     unset ${ov}fileListTrimmed
@@ -1983,6 +2077,9 @@ function fileBrowser.updateFileList {
       screen.trimString ${omv}entry ${d}((${ov}width-3)) ${q}${d}{${omv}entry}${q}
       apush ${ov}fileListTrimmed ${q}${d}{${omv}entry}${q}
     done
+
+    ((${d}{#${ov}fileList[@]}>0)) && eval ${q}${ov}indexLookupTable=( {0..${d}((${d}{#${ov}fileList[@]}-1))} )${q}
+    ${ov}indexLookupTableReversed=( ${q}${d}{${ov}indexLookupTable[@]}${q} )
 
     ${ov}fileListIndexOffset=0
     ${ov}selectedFile=0
@@ -1996,7 +2093,23 @@ function fileBrowser.selectFile {
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
-    [[ -n ${q}${d}{1}${q} ]] && ${ov}selectedFile=${d}((${ov}fileListIndexOffset+${d}{1}))
+    typeset ${omv}index
+
+    if isnum ${q}${d}{1}${q} ; then
+
+
+      ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}((${ov}fileListIndexOffset+${d}{1}))]}
+
+
+    elif [[ -n ${q}${d}{1}${q} ]] ; then
+      for ${omv}index in ${q}${d}{!${ov}fileList[@]}${q} ; do
+        [[ ${q}${d}{${ov}fileList[${d}{${omv}index}]}${q} = ${q}${d}{1}${q} ]] && {
+          ${ov}selectedFile=${d}{${omv}index}
+          break
+        }
+      done
+      for ((${ov}fileListIndexOffset=0;${ov}fileListIndexOffset<${ov}selectedFile-${ov}height;${ov}fileListIndexOffset+=${ov}height)) ; do :;done
+    fi
 
     [[ ${q}${d}{${ov}fileList[${d}{${ov}selectedFile}]}${q} = ${q}..${q} ]] && {
       ${o}.refresh
@@ -2022,14 +2135,14 @@ function fileBrowser.incSelectedFile {
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
-    if ((${ov}selectedFile>=${d}{#${ov}fileList[@]}-1)) ; then
-      ${ov}selectedFile=0
+    if ((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedFile}]}>=${d}{#${ov}fileList[@]}-1)) ; then
+      ${ov}selectedFile=${d}{${ov}indexLookupTable[0]}
       ${ov}fileListIndexOffset=0
     else
-      ((${ov}selectedFile++))
+      ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedFile}]}+1))]}
     fi
 
-    ((${ov}selectedFile-${ov}fileListIndexOffset>${ov}height-1)) && ${o}.pageDown
+    ((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedFile}]}-${ov}fileListIndexOffset>${ov}height-1)) && ${o}.pageDown
   "
 }
 #[cf]
@@ -2040,16 +2153,16 @@ function fileBrowser.decSelectedFile {
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
-    if ((${ov}selectedFile==0)) ; then
-      ((${ov}selectedFile=${d}{#${ov}fileList[@]}-1))
-      for ((${ov}fileListIndexOffset=0;${ov}fileListIndexOffset<${ov}selectedFile-${ov}height-1;${ov}fileListIndexOffset=${ov}fileListIndexOffset+${ov}height)) do :; done
+    if ((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedFile}]}==0)) ; then
+      ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}((${d}{#${ov}fileList[@]}-1))]}
+      for ((${ov}fileListIndexOffset=0;${ov}fileListIndexOffset<${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedFile}]}-${ov}height-1;${ov}fileListIndexOffset=${ov}fileListIndexOffset+${ov}height)) do :; done
     else
-      ((${ov}selectedFile--))
+      ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedFile}]}-1))]}
     fi
 
-    ((${ov}selectedFile<${ov}fileListIndexOffset)) && {
+    ((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedFile}]}<${ov}fileListIndexOffset)) && {
       ${o}.pageUp
-      ((${ov}selectedFile=${ov}fileListIndexOffset+${ov}height-1))
+      ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}((${ov}fileListIndexOffset+${ov}height-1))]}
     }
   "
 }
@@ -2130,6 +2243,30 @@ function fileBrowser.constructor {
       }
     "
   done
+#[of]:  fileListLookupShuffle
+m=fileListLookupShuffle
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  ((${d}{#${ov}fileList[@]}>0)) && ${ov}indexLookupTable=( ${d}(eval ${q}shuf -e {0..${d}((${d}{#${ov}fileList[@]}-1))}${q}) )
+
+  unset ${ov}indexLookupTableReversed
+  for _i in ${q}${d}{${ov}indexLookupTable[@]}${q};do ${ov}indexLookupTableReversed[${d}{_i}]=${d}{#${ov}indexLookupTableReversed[@]};done
+  
+  ${ov}fileListIndexOffset=0
+  ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}{${ov}fileListIndexOffset}]}
+}"
+#[cf]
+#[of]:  fileListLookupReset
+m=fileListLookupReset
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  ((${d}{#${ov}fileList[@]}>0)) && eval ${q}${ov}indexLookupTable=( {0..${d}((${d}{#${ov}fileList[@]}-1))} )${q}
+  ${ov}indexLookupTableReversed=( ${q}${d}{${ov}indexLookupTable[@]}${q} )
+
+  ${ov}fileListIndexOffset=0
+  ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}{${ov}fileListIndexOffset}]}
+}"
+#[cf]
   eval "
 #[of]:    function ${o}.bindEventAction {
 function ${o}.bindEventAction {
@@ -2162,28 +2299,30 @@ function ${o}.decFileListIndexOffset {
 #[cf]
 #[of]:    function ${o}.setPwd {
 function ${o}.setPwd {
-  ${ov}pwd=${q}${d}1${q}
-  ${o}.updateFileList
+  [[ ${q}${d}{${ov}pwd}${q} != ${q}${d}1${q} ]] && {
+    ${ov}pwd=${q}${d}1${q}
+    ${o}.updateFileList
+  }
 }
 #[cf]
 #[of]:    function ${o}.pageUp {
 function ${o}.pageUp {
   ((${ov}fileListIndexOffset>0)) && ((${ov}fileListIndexOffset=${ov}fileListIndexOffset-${ov}height))
   ((${ov}fileListIndexOffset<0)) && ${ov}fileListIndexOffset=0
-  ((${ov}selectedFile=${ov}fileListIndexOffset))
+  ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}{${ov}fileListIndexOffset}]}
 }
 #[c]
 #[cf]
 #[of]:    function ${o}.pageDown {
 function ${o}.pageDown {
   ((${ov}fileListIndexOffset<${d}{#${ov}fileList[@]}-${ov}height)) && ((${ov}fileListIndexOffset=${ov}fileListIndexOffset+${ov}height))
-  ((${ov}selectedFile=${ov}fileListIndexOffset))
+  ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}{${ov}fileListIndexOffset}]}
 }
 #[cf]
 #[of]:    object data
 newvar ${ov}height ${ov}width ${ov}leftOffset ${ov}topOffset
 newvar ${ov}leftOffset ${ov}topOffset
-newvar ${ov}fileList ${ov}fileListTrimmed ${ov}fileListIndexOffset
+newvar ${ov}fileList ${ov}fileListTrimmed ${ov}fileListIndexOffset ${ov}indexLookupTable
 newvar ${ov}pwd ${ov}selectedFile
 new hash ${ov}inputEventActions
 
@@ -2193,7 +2332,7 @@ ${ov}height=${q}${d}{2:-0}${q}
 ${ov}pwd=${q}${d}{3:-${d}(pwd)}${q}
 ${ov}pwd=${q}${d}{${ov}pwd%/}${q}
 #[cf]
-    ${o}.updateFileList
+#[c]    ${o}.updateFileList
   "
 }
 #[cf]
