@@ -379,7 +379,7 @@ refresh {
     ((gl_debug>0)) && return
     typeset ${omv}objectId ${omv}left ${omv}top
     
-#[c]    clear
+    clear
 
     ${o}.runEventAction refresh
 
@@ -1167,8 +1167,10 @@ function window.drawBorder {
         ;;
     esac
 
+#[of]:    draw top border
     ${o}.setcursorxy 0 0
     printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tl_br}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tr_bl}${q}
+#[cf]
 
 #[c]    for ((${omv}index=1;${omv}index<${ov}height-1;${omv}index++)) ; do
 #[c]      ${o}.setcursorxy 0 ${d}{${omv}index}
@@ -1177,13 +1179,24 @@ function window.drawBorder {
 #[c]      echo -n ${q}${d}{${omv}v}${q}
 #[c]    done
 
+#[of]:    draw left border
     ${o}.setcursorxy 0 1
     printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
-    ${o}.setcursorxy ${d}((${ov}width-1)) 1
-    printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
+#[cf]
+#[of]:    draw right border
+#[c]    ${o}.setcursorxy ${d}((${ov}width-1)) 1
+#[c]    printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
 
+    for ((${omv}index=1;${omv}index<${ov}height-1;${omv}index++)) ; do
+      ${o}.setcursorxy $((${ov}width-1)) ${d}{${omv}index}
+      echo -n ${q}${d}{${omv}v}${q}
+    done
+
+#[cf]
+#[of]:    draw bottom border
     ${o}.setcursorxy 0 ${d}((${ov}height-1))
     printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tr_bl}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tl_br}${q}
+#[cf]
 
     return 0
   "
@@ -1595,16 +1608,28 @@ function button.drawBorder {
         ;;
     esac
 
+#[of]:    draw top border
     ${o}.setcursorxy 0 0
     printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tl_br}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tr_bl}${q}
-
+#[cf]
+#[of]:    draw left border
     ${o}.setcursorxy 0 1
     printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
-    ${o}.setcursorxy ${d}((${ov}width-1)) 1
-    printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
+#[cf]
+#[of]:    draw right border
+#[c]    ${o}.setcursorxy ${d}((${ov}width-1)) 1
+#[c]    printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
 
+    for ((${omv}index=1;${omv}index<${ov}height-1;${omv}index++)) ; do
+      ${o}.setcursorxy $((${ov}width-1)) ${d}{${omv}index}
+      echo -n ${q}${d}{${omv}v}${q}
+    done
+
+#[cf]
+#[of]:    draw bottom border
     ${o}.setcursorxy 0 ${d}((${ov}height-1))
     printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tr_bl}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tl_br}${q}
+#[cf]
 
     return 0
   "
@@ -1636,7 +1661,7 @@ function button.refresh {
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
-    typeset ${omv}hasFocus ${omv}length
+    typeset ${omv}hasFocus ${omv}length ${omv}index ${omv}line
     [[ -n ${q}${d}{2}${q} ]] && {
       ${ov}leftOffset=${q}${d}{1}${q}
       ${ov}topOffset=${q}${d}{2}${q}
@@ -1648,17 +1673,28 @@ function button.refresh {
       [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${ov}hasFocus=1 || ${ov}hasFocus=0
     }
 
+    ((${ov}height>2)) && {
+      for ((${omv}index=0;${omv}index<${ov}height;${omv}index++)) ; do
+        ${o}.setcursorxy 0 ${d}{${omv}index}
+        printf ${q}%${d}((${ov}width))s${q} ${q}${q}
+      done
+      
+      ((${ov}drawBorder)) && ${o}.drawBorder
+    }
+
     ((${ov}hasFocus)) && screen.styleSetReverse
     
     screen.stringLength ${omv}length ${q}${d}{${ov}title}${q}
-    ${o}.setcursorxy 0 ${d}((${ov}height/2))
-    printf ${q}%${d}((${ov}width))s${q} ${q}${q}
-    ${o}.setcursorxy ${d}((${ov}width/2-${d}{${omv}length}/2)) ${d}((${ov}height/2))
+#[c]    ${o}.setcursorxy 0 ${d}((${ov}height/2))
+#[c]    printf ${q}%${d}((${ov}width))s${q} ${q}${q}
+    if ((${ov}labelLeft)) ; then
+      ${o}.setcursorxy 0 ${d}((${ov}height/2))
+    else
+      ${o}.setcursorxy ${d}((${ov}width/2-${d}{${omv}length}/2)) ${d}((${ov}height/2))
+    fi
     echo -n ${q}${d}{${ov}title:0:${d}((${ov}width))}${q}
 
     ((${ov}hasFocus)) && screen.styleSetNormal
-
-    ((${ov}drawBorder)) && ((${ov}height>2)) && ${o}.drawBorder
   "
 }
 #[c]
@@ -1712,7 +1748,7 @@ function button.constructor {
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   typeset _i
-  for _i in height width drawBorder borderStyle ; do
+  for _i in height width drawBorder borderStyle labelLeft ; do
     eval "
       newvar ${ov}${_i}
       function ${o}.set${_i^} {
@@ -1785,6 +1821,7 @@ ${o}.setHeight ${q}${d}{2:-1}${q}
 ${ov}txtAlignment=0
 ${ov}drawBorder=1
 ${ov}borderStyle=1
+${ov}labelLeft=0
 #[cf]
   "
 }
@@ -2043,7 +2080,7 @@ function fileBrowser.refresh {
     for ((${omv}index=${ov}fileListIndexOffset;${omv}index<${ov}height+${ov}fileListIndexOffset;${omv}index++)) ; do
 #[of]:      erase line
       ${o}.setcursorxy 0 ${d}((${omv}index-${ov}fileListIndexOffset))
-      printf ${q}%${d}((${ov}width-2))s${q} ${q}${q}
+      printf ${q}%${d}((${ov}width))s${q} ${q}${q}
 #[cf]
 #[of]:      print line
       if [[ -n ${q}${d}{${ov}indexLookupTable[${d}{${omv}index}]}${q} ]] ; then
@@ -2074,7 +2111,7 @@ function fileBrowser.updateFileList {
 
     unset ${ov}fileListTrimmed
     for ${omv}entry in ${q}${d}{${ov}fileList[@]}${q} ; do
-      screen.trimString ${omv}entry ${d}((${ov}width-3)) ${q}${d}{${omv}entry}${q}
+      screen.trimString ${omv}entry ${d}((${ov}width-2)) ${q}${d}{${omv}entry}${q}
       apush ${ov}fileListTrimmed ${q}${d}{${omv}entry}${q}
     done
 
@@ -2096,11 +2133,11 @@ function fileBrowser.selectFile {
     typeset ${omv}index
 
     if isnum ${q}${d}{1}${q} ; then
-
-
-      ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}((${ov}fileListIndexOffset+${d}{1}))]}
-
-
+      if [[ -n ${q}${d}{${ov}indexLookupTable[${d}((${ov}fileListIndexOffset+${d}{1}))]}${q} ]] ; then
+        ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}((${ov}fileListIndexOffset+${d}{1}))]}
+      else
+        return 1
+      fi
     elif [[ -n ${q}${d}{1}${q} ]] ; then
       for ${omv}index in ${q}${d}{!${ov}fileList[@]}${q} ; do
         [[ ${q}${d}{${ov}fileList[${d}{${omv}index}]}${q} = ${q}${d}{1}${q} ]] && {
@@ -2300,7 +2337,11 @@ function ${o}.decFileListIndexOffset {
 #[of]:    function ${o}.setPwd {
 function ${o}.setPwd {
   [[ ${q}${d}{${ov}pwd}${q} != ${q}${d}1${q} ]] && {
-    ${ov}pwd=${q}${d}1${q}
+    if [[ -d ${q}${d}1${q} ]] ; then
+      ${ov}pwd=${q}${d}1${q}
+    else
+      ${ov}pwd=${d}(pwd)
+    fi
     ${o}.updateFileList
   }
 }
