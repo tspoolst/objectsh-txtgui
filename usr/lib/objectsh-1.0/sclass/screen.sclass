@@ -51,8 +51,132 @@
 #[c]    slider
 #[c]    filebrowser
 #[cf]
+#[of]:class meta
+screen_cm_extends=
+#[cf]
+#[of]:class methods
+function screen.classconstructor {
+#[c]object
+#[of]:  includes
+  include hash
+  include referenceid
+#[cf]
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+#[of]:    function ${c}.calcscreensize {
+function ${c}.calcscreensize {
+  set -- ${d}(stty size 2>/dev/null)
+  ${cv}height=${d}1
+  ${cv}width=${d}2
+  [[ -z ${q}${d}{${cv}height}${q} ]] && {
+    ${cv}height=24
+    ${cv}width=80
+  }
+#[c]  echo ${d}{${cv}height} ${d}{${cv}width}
+#[c]  read -n 1
+  return 0
+}
+#[cf]
+#[of]:    function ${c}.setScreenHeight {
+function ${c}.setScreenHeight {
+  #to get the resize command
+  #sudo apt install xterm
+  typeset ${cmv}height
+  
+  if isset TERM && [[ -z ${q}${d}{TERM##xterm*}${q} ]] && which resize &>/dev/null ; then
+    ${cmv}height=${d}1
+    resize -s ${d}{${cmv}height} ${d}{${cv}width} &>/dev/null || return 1
+    ${cv}height=${d}{${cmv}height}
+  else
+    return 1
+  fi
+  return 0
+}
+#[cf]
+#[of]:    function ${c}.setScreenWidth {
+function ${c}.setScreenWidth {
+  #to get the resize command
+  #sudo apt install xterm
+  typeset ${cmv}width
+
+  if isset TERM && [[ -z ${q}${d}{TERM##xterm*}${q} ]] && which resize &>/dev/null ; then
+    ${cmv}width=${d}1
+    resize -s ${d}{${cv}height} ${d}{${cmv}width} &>/dev/null || return 1
+    ${cv}width=${d}{${cmv}width}
+  else
+    return 1
+  fi
+  return 0
+}
+#[cf]
+#[of]:    function ${c}.setcursorxy {
+function ${c}.setcursorxy {
+  typeset ${cmv}x ${cmv}y
+  ${cmv}x=${d}1
+  ${cmv}y=${d}2
+  echo -en ${q}\\\\033[${d}((${cmv}y+1));${d}((${cmv}x+1))H${q}
+  return 0
+}
+#[cf]
+#[of]:    function ${c}.mouseEnable {
+function ${c}.mouseEnable {
+  stty -echo
+  if [[ ${q}${d}1${q} == ${q}-d${q} ]] ; then
+    echo -en '\e[?1002;1006;1015h'
+  else
+    echo -en '\e[?1000;1006;1015h'
+  fi
+}
+#[cf]
+#[of]:    function ${c}.mouseDisable {
+function ${c}.mouseDisable {
+  stty echo
+  echo -en '\e[?1000;1001;1002;1003;1006;1015l'
+}
+#[cf]
+#[of]:    function ${c}.styleSetReverse {
+function ${c}.styleSetReverse {
+  echo -en ${q}\\033[7m${q}
+}
+#[cf]
+#[of]:    function ${c}.styleSetNormal {
+function ${c}.styleSetNormal {
+  echo -en ${q}\\033[0m${q}
+}
+#[cf]
+#[of]:    function ${c}.trimString {
+function ${c}.trimString {
+  typeset _s
+  _s=${q}${d}3${q}
+  while ((${d}(wc -L <<< ${q}${d}{_s}${q})>${d}{2}));do _s=${q}${d}{_s%?}${q};done
+  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+    echo ${q}${d}{_s}${q}
+  else
+    eval ${d}1=\\${q}\\${d}{_s}\\${q}
+  fi
+
+}
+#[cf]
+#[of]:    function ${c}.stringLength {
+function ${c}.stringLength {
+  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+    echo ${d}(wc -L <<< ${q}${d}2${q})
+  else
+    eval ${q}${d}1=\\${d}(wc -L <<< \\${q}\\${d}2\\${q})${q}
+  fi
+}
+#[cf]
+#[of]:    class data
+newvar ${cv}height ${cv}width
+#[cf]
+    ${c}.calcscreensize
+  "
+}
+#[cf]
 #[of]:static methods
-#[of]:function screen.staticconstructor {
 function screen.staticconstructor {
   typeset ${omv}method
 #[of]:  open {
@@ -886,133 +1010,7 @@ eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
 }
 #[cf]
-#[cf]
-#[of]:class methods
-#[of]:function screen.classconstructor {
-function screen.classconstructor {
-#[c]object
-#[of]:  includes
-  include hash
-  include referenceid
-#[cf]
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-#[of]:    function ${c}.calcscreensize {
-function ${c}.calcscreensize {
-  set -- ${d}(stty size 2>/dev/null)
-  ${cv}height=${d}1
-  ${cv}width=${d}2
-  [[ -z ${q}${d}{${cv}height}${q} ]] && {
-    ${cv}height=24
-    ${cv}width=80
-  }
-#[c]  echo ${d}{${cv}height} ${d}{${cv}width}
-#[c]  read -n 1
-  return 0
-}
-#[cf]
-#[of]:    function ${c}.setScreenHeight {
-function ${c}.setScreenHeight {
-  #to get the resize command
-  #sudo apt install xterm
-  typeset ${cmv}height
-  
-  if isset TERM && [[ -z ${q}${d}{TERM##xterm*}${q} ]] && which resize &>/dev/null ; then
-    ${cmv}height=${d}1
-    resize -s ${d}{${cmv}height} ${d}{${cv}width} &>/dev/null || return 1
-    ${cv}height=${d}{${cmv}height}
-  else
-    return 1
-  fi
-  return 0
-}
-#[cf]
-#[of]:    function ${c}.setScreenWidth {
-function ${c}.setScreenWidth {
-  #to get the resize command
-  #sudo apt install xterm
-  typeset ${cmv}width
-
-  if isset TERM && [[ -z ${q}${d}{TERM##xterm*}${q} ]] && which resize &>/dev/null ; then
-    ${cmv}width=${d}1
-    resize -s ${d}{${cv}height} ${d}{${cmv}width} &>/dev/null || return 1
-    ${cv}width=${d}{${cmv}width}
-  else
-    return 1
-  fi
-  return 0
-}
-#[cf]
-#[of]:    function ${c}.setcursorxy {
-function ${c}.setcursorxy {
-  typeset ${cmv}x ${cmv}y
-  ${cmv}x=${d}1
-  ${cmv}y=${d}2
-  echo -en ${q}\\\\033[${d}((${cmv}y+1));${d}((${cmv}x+1))H${q}
-  return 0
-}
-#[cf]
-#[of]:    function ${c}.mouseEnable {
-function ${c}.mouseEnable {
-  stty -echo
-  if [[ ${q}${d}1${q} == ${q}-d${q} ]] ; then
-    echo -en '\e[?1002;1006;1015h'
-  else
-    echo -en '\e[?1000;1006;1015h'
-  fi
-}
-#[cf]
-#[of]:    function ${c}.mouseDisable {
-function ${c}.mouseDisable {
-  stty echo
-  echo -en '\e[?1000;1001;1002;1003;1006;1015l'
-}
-#[cf]
-#[of]:    function ${c}.styleSetReverse {
-function ${c}.styleSetReverse {
-  echo -en ${q}\\033[7m${q}
-}
-#[cf]
-#[of]:    function ${c}.styleSetNormal {
-function ${c}.styleSetNormal {
-  echo -en ${q}\\033[0m${q}
-}
-#[cf]
-#[of]:    function ${c}.trimString {
-function ${c}.trimString {
-  typeset _s
-  _s=${q}${d}3${q}
-  while ((${d}(wc -L <<< ${q}${d}{_s}${q})>${d}{2}));do _s=${q}${d}{_s%?}${q};done
-  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
-    echo ${q}${d}{_s}${q}
-  else
-    eval ${d}1=\\${q}\\${d}{_s}\\${q}
-  fi
-
-}
-#[cf]
-#[of]:    function ${c}.stringLength {
-function ${c}.stringLength {
-  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
-    echo ${d}(wc -L <<< ${q}${d}2${q})
-  else
-    eval ${q}${d}1=\\${d}(wc -L <<< \\${q}\\${d}2\\${q})${q}
-  fi
-}
-#[cf]
-#[of]:    class data
-newvar ${cv}height ${cv}width
-#[cf]
-    ${c}.calcscreensize
-  "
-}
-#[cf]
-#[cf]
 #[of]:dynamic methods
-#[of]:function screen.constructor {
 function screen.constructor {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
@@ -1138,10 +1136,267 @@ ${ov}refreshInterval=10
 }
 #[cf]
 #[cf]
+#[of]:screenObject
+#[of]:description
+#[c]screen object base object
+#[cf]
+#[of]:class meta
+screenObject_cm_extends=
+#[cf]
+#[of]:class methods
+function screenObject.classconstructor {
+#[c]object
+#[of]:  includes
+  include hash
+#[cf]
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+#[of]:    class data
+
+#[cf]
+  "
+}
+#[cf]
+#[of]:static methods
+function screenObject.staticconstructor {
+  typeset ${omv}method
+#[of]:  drawBorder {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+drawBorder {
+#[c]object -|var
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}line  ${omv}h ${omv}v  ${omv}tl_br ${omv}tr_bl ${omv}index
+    case ${q}${d}{${ov}borderStyle}${q} in
+      1)
+        ${omv}h='-'
+        ${omv}v='|'
+        ${omv}tl_br='/'
+        ${omv}tr_bl='\'
+        ;;
+      *)
+        ${omv}h='*'
+        ${omv}v='*'
+        ${omv}tl_br='*'
+        ${omv}tr_bl='*'
+        ;;
+    esac
+
+#[of]:    draw top border
+    ${o}.setcursorxy 0 0
+    printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tl_br}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tr_bl}${q}
+#[cf]
+#[of]:    draw left border
+    ${o}.setcursorxy 0 1
+    printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
+#[cf]
+#[of]:    draw right border
+#[c]    ${o}.setcursorxy ${d}((${ov}width-1)) 1
+#[c]    printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
+
+    for ((${omv}index=1;${omv}index<${ov}height-1;${omv}index++)) ; do
+      ${o}.setcursorxy $((${ov}width-1)) ${d}{${omv}index}
+      echo -n ${q}${d}{${omv}v}${q}
+    done
+
+#[cf]
+#[of]:    draw bottom border
+    ${o}.setcursorxy 0 ${d}((${ov}height-1))
+    printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tr_bl}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tl_br}${q}
+#[cf]
+
+    return 0
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[cf]
+#[of]:  runEventAction {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+runEventAction {
+#[c]object
+#[c]somehow consume ${omv}startx ${omv}starty ${omv}x ${omv}y with callout
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}objectName ${omv}action
+    if ${o}.getEventAction ${omv}objectName ${omv}action ! ! ${q}${d}1${q} ; then
+      trap ${q}echo TRAPed signal${q} INT
+      eval ${q}${d}{${omv}action}${q}
+      trap - INT
+    fi
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[cf]
+#[of]:  refresh {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+refresh {
+#[c]object
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}hasFocus ${omv}length ${omv}index ${omv}line
+    [[ -n ${q}${d}{2}${q} ]] && {
+      ${ov}leftOffset=${q}${d}{1}${q}
+      ${ov}topOffset=${q}${d}{2}${q}
+    }
+
+    ${o}.runEventAction refresh
+
+    [[ -n ${q}${d}4${q} ]] && {
+      [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${ov}hasFocus=1 || ${ov}hasFocus=0
+    }
+
+    ((${ov}height>2)) && {
+      for ((${omv}index=0;${omv}index<${ov}height;${omv}index++)) ; do
+        ${o}.setcursorxy 0 ${d}{${omv}index}
+        printf ${q}%${d}((${ov}width))s${q} ${q}${q}
+      done
+      
+      ((${ov}drawBorder)) && ${o}.drawBorder
+    }
+
+    ((${ov}hasFocus)) && screen.styleSetReverse
+    
+    screen.stringLength ${omv}length ${q}${d}{${ov}title}${q}
+#[c]    ${o}.setcursorxy 0 ${d}((${ov}height/2))
+#[c]    printf ${q}%${d}((${ov}width))s${q} ${q}${q}
+    if ((${ov}labelLeft)) ; then
+      ${o}.setcursorxy 0 ${d}((${ov}height/2))
+    else
+      ${o}.setcursorxy ${d}((${ov}width/2-${d}{${omv}length}/2)) ${d}((${ov}height/2))
+    fi
+    echo -n ${q}${d}{${ov}title:0:${d}((${ov}width))}${q}
+
+    ((${ov}hasFocus)) && screen.styleSetNormal
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[cf]
+#[of]:  setcursorxy {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+setcursorxy {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}x ${omv}y
+    ${omv}x=${d}1
+    ${omv}y=${d}2
+    echo -en ${q}\\\\033[${d}((${ov}topOffset+1+${omv}y));${d}((${ov}leftOffset+1+${omv}x))H${q}
+    return 0
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[cf]
+}
+#[cf]
+#[of]:dynamic methods
+function screenObject.constructor {
+#[of]:set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  typeset _i
+  for _i in height width title drawBorder borderStyle labelLeft  ; do
+    eval "
+      newvar ${ov}${_i}
+      function ${o}.set${_i^} {
+        ${ov}${_i}=${q}${d}1${q}
+      }
+
+      function ${o}.get${_i^} {
+        if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+          echo ${q}${d}{${ov}${_i}}${q}
+        else
+          eval ${d}1=\\${q}\\${d}{${ov}${_i}}\\${q}
+        fi
+      }
+    "
+  done
+#[of]:  bindEventAction
+m=bindEventAction
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  typeset _i
+  for _i in ${q}${d}{@:1:${d}#-1}${q} ; do
+    ${ov}inputEventActions.setkey ${q}${d}{_i}${q} ${q}${d}{@: -1}${q}
+  done
+}"
+#[cf]
+#[of]:  getEventAction
+m=getEventAction
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  [[ ${q}${d}1${q} != ${q}!${q} ]] && eval ${d}1=\\${q}${o}\\${q}
+  ${ov}inputEventActions.getkey ${q}${d}2${q} ${q}${d}5${q}
+}"
+#[cf]
+#[of]:  delEventAction
+m=delEventAction
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  ${ov}inputEventActions.delkey ${q}${d}1${q}
+}"
+#[cf]
+  eval "
+#[of]:    object data
+newvar ${ov}height ${ov}width ${ov}title
+newvar ${ov}leftOffset ${ov}topOffset
+newvar ${ov}txtAlignment ${ov}drawBorder ${ov}borderStyle
+newvar ${ov}hasFocus
+new hash ${ov}inputEventActions
+
+${ov}width=${q}${d}{1:-0}${q}
+${ov}height=${q}${d}{2:-1}${q}
+
+${ov}txtAlignment=0
+${ov}drawBorder=1
+${ov}borderStyle=1
+${ov}labelLeft=0
+#[cf]
+  "
+}
+#[cf]
 #[cf]
 #[of]:window
+#[of]:class meta
+window_cm_extends=
+#[cf]
+#[of]:class methods
+function window.classconstructor {
+#[c]object
+#[of]:  includes
+  include hash
+  include referenceid
+#[cf]
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+#[of]:    class data
+
+#[cf]
+  "
+}
+#[cf]
 #[of]:static methods
-#[of]:function window.staticconstructor {
 function window.staticconstructor {
 #[of]:  function window.drawBorder {
 function window.drawBorder {
@@ -1503,29 +1758,7 @@ function window.setcursorxy {
 #[cf]
 }
 #[cf]
-#[cf]
-#[of]:class methods
-#[of]:function window.classconstructor {
-function window.classconstructor {
-#[c]object
-#[of]:  includes
-  include hash
-  include referenceid
-#[cf]
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-#[of]:    class data
-
-#[cf]
-  "
-}
-#[cf]
-#[cf]
 #[of]:dynamic methods
-#[of]:function window.constructor {
 function window.constructor {
 #[of]:set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
@@ -1579,151 +1812,46 @@ ${ov}borderStyle=0
 }
 #[cf]
 #[cf]
-#[cf]
 #[of]:button
-#[of]:static methods
-#[of]:function button.staticconstructor {
-function button.staticconstructor {
-#[of]:  function button.drawBorder {
-function button.drawBorder {
-#[c]object -|var
-#[of]:  set common environment
+#[of]:class meta
+button_cm_extends=screenObject
+#[cf]
+#[of]:dynamic methods
+function button.constructor {
+#[of]:set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
-  eval "
-    typeset ${omv}line  ${omv}h ${omv}v  ${omv}tl_br ${omv}tr_bl ${omv}index
-    case ${q}${d}{${ov}borderStyle}${q} in
-      1)
-        ${omv}h='-'
-        ${omv}v='|'
-        ${omv}tl_br='/'
-        ${omv}tr_bl='\'
-        ;;
-      *)
-        ${omv}h='*'
-        ${omv}v='*'
-        ${omv}tl_br='*'
-        ${omv}tr_bl='*'
-        ;;
-    esac
+#[of]:  setTitle
+m=setTitle
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  ${ov}title=${q}${d}1${q}
 
-#[of]:    draw top border
-    ${o}.setcursorxy 0 0
-    printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tl_br}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tr_bl}${q}
-#[cf]
-#[of]:    draw left border
-    ${o}.setcursorxy 0 1
-    printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
-#[cf]
-#[of]:    draw right border
-#[c]    ${o}.setcursorxy ${d}((${ov}width-1)) 1
-#[c]    printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
-
-    for ((${omv}index=1;${omv}index<${ov}height-1;${omv}index++)) ; do
-      ${o}.setcursorxy $((${ov}width-1)) ${d}{${omv}index}
-      echo -n ${q}${d}{${omv}v}${q}
-    done
-
-#[cf]
-#[of]:    draw bottom border
-    ${o}.setcursorxy 0 ${d}((${ov}height-1))
-    printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tr_bl}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tl_br}${q}
-#[cf]
-
-    return 0
-  "
-}
-#[cf]
-#[of]:  function button.runEventAction {
-function button.runEventAction {
-#[c]object
-#[c]somehow consume ${omv}startx ${omv}starty ${omv}x ${omv}y with callout
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-    typeset ${omv}objectName ${omv}action
-    if ${o}.getEventAction ${omv}objectName ${omv}action ! ! ${q}${d}1${q} ; then
-      trap ${q}echo TRAPed signal${q} INT
-      eval ${q}${d}{${omv}action}${q}
-      trap - INT
-    fi
-  "
-}
-#[cf]
-#[of]:  function button.refresh {
-function button.refresh {
-#[c]object
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-    typeset ${omv}hasFocus ${omv}length ${omv}index ${omv}line
-    [[ -n ${q}${d}{2}${q} ]] && {
-      ${ov}leftOffset=${q}${d}{1}${q}
-      ${ov}topOffset=${q}${d}{2}${q}
-    }
-
-    ${o}.runEventAction refresh
-
-    [[ -n ${q}${d}4${q} ]] && {
-      [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${ov}hasFocus=1 || ${ov}hasFocus=0
-    }
-
-    ((${ov}height>2)) && {
-      for ((${omv}index=0;${omv}index<${ov}height;${omv}index++)) ; do
-        ${o}.setcursorxy 0 ${d}{${omv}index}
-        printf ${q}%${d}((${ov}width))s${q} ${q}${q}
-      done
-      
-      ((${ov}drawBorder)) && ${o}.drawBorder
-    }
-
-    ((${ov}hasFocus)) && screen.styleSetReverse
-    
-    screen.stringLength ${omv}length ${q}${d}{${ov}title}${q}
-#[c]    ${o}.setcursorxy 0 ${d}((${ov}height/2))
-#[c]    printf ${q}%${d}((${ov}width))s${q} ${q}${q}
-    if ((${ov}labelLeft)) ; then
-      ${o}.setcursorxy 0 ${d}((${ov}height/2))
+  if ((${ov}width==0)) ; then
+    if ((${ov}drawBorder)) && ((${ov}height>2)) ; then
+      ${ov}width=${d}((${d}{#${ov}title}+4))
     else
-      ${o}.setcursorxy ${d}((${ov}width/2-${d}{${omv}length}/2)) ${d}((${ov}height/2))
+      ${ov}width=${d}{#${ov}title}
     fi
-    echo -n ${q}${d}{${ov}title:0:${d}((${ov}width))}${q}
-
-    ((${ov}hasFocus)) && screen.styleSetNormal
-  "
-}
-#[c]
-#[c]if button bigger than label i.e. height>1 or width greater than title
-#[c]
-#[c]title is always center of button
-#[c]should we support multiline titles?  not yet.
-#[cf]
-#[of]:  function button.setcursorxy {
-function button.setcursorxy {
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
+  else
+    screen.trimString ${ov}title ${d}{${ov}width} ${q}${d}{${ov}title}${q}
+  fi
+}"
 #[cf]
   eval "
-    typeset ${omv}x ${omv}y
-    ${omv}x=${d}1
-    ${omv}y=${d}2
-    echo -en ${q}\\\\033[${d}((${ov}topOffset+1+${omv}y));${d}((${ov}leftOffset+1+${omv}x))H${q}
-    return 0
+#[of]:    object data
+#[c]${ov}width=${q}${d}{1:-0}${q}
+#[c]${ov}height=${q}${d}{2:-1}${q}
+#[cf]
   "
 }
 #[cf]
-}
 #[cf]
-#[cf]
+#[of]:progressSlider
 #[of]:class methods
-#[of]:function buton.classconstructor {
-function button.classconstructor {
+#[of]:function progressSlider.classconstructor {
+function progressSlider.classconstructor {
 #[c]object
 #[of]:  includes
   include hash
@@ -1740,95 +1868,6 @@ function button.classconstructor {
 }
 #[cf]
 #[cf]
-#[of]:dynamic methods
-#[of]:function button.constructor {
-function button.constructor {
-#[of]:set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  typeset _i
-  for _i in height width drawBorder borderStyle labelLeft ; do
-    eval "
-      newvar ${ov}${_i}
-      function ${o}.set${_i^} {
-        ${ov}${_i}=${q}${d}1${q}
-      }
-
-      function ${o}.get${_i^} {
-        if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
-          echo ${q}${d}{${ov}${_i}}${q}
-        else
-          eval ${d}1=\\${q}\\${d}{${ov}${_i}}\\${q}
-        fi
-      }
-    "
-  done
-  eval "
-#[of]:    function ${o}.bindEventAction {
-function ${o}.bindEventAction {
-  typeset _i
-  for _i in ${q}${d}{@:1:${d}#-1}${q} ; do
-    ${ov}inputEventActions.setkey ${q}${d}{_i}${q} ${q}${d}{@: -1}${q}
-  done
-}
-#[cf]
-#[of]:    function ${o}.getEventAction {
-function ${o}.getEventAction {
-  [[ ${q}${d}1${q} != ${q}!${q} ]] && eval ${d}1=\\${q}${o}\\${q}
-  ${ov}inputEventActions.getkey ${q}${d}2${q} ${q}${d}5${q}
-}
-#[cf]
-#[of]:    function ${o}.delEventAction {
-function ${o}.delEventAction {
-  ${ov}inputEventActions.delkey ${q}${d}1${q}
-}
-#[cf]
-#[of]:    function ${o}.setTitle {
-function ${o}.setTitle {
-  ${ov}title=${q}${d}1${q}
-
-  if ((${ov}width==0)) ; then
-    if ((${ov}drawBorder)) && ((${ov}height>2)) ; then
-      ${ov}width=${d}((${d}{#${ov}title}+4))
-    else
-      ${ov}width=${d}{#${ov}title}
-    fi
-  else
-    screen.trimString ${ov}title ${d}{${ov}width} ${q}${d}{${ov}title}${q}
-  fi
-}
-#[cf]
-#[of]:    function ${o}.getTitle {
-function ${o}.getTitle {
-  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
-    echo ${q}${d}{${ov}title}${q}
-  else
-    eval ${d}1=\\${q}\\${d}{${ov}title}\\${q}
-  fi
-}
-#[cf]
-#[of]:    object data
-newvar ${ov}height ${ov}width ${ov}title
-newvar ${ov}leftOffset ${ov}topOffset
-newvar ${ov}txtAlignment ${ov}drawBorder ${ov}borderStyle
-newvar ${ov}hasFocus
-new hash ${ov}inputEventActions
-
-${o}.setWidth ${q}${d}{1:-0}${q}
-${o}.setHeight ${q}${d}{2:-1}${q}
-
-${ov}txtAlignment=0
-${ov}drawBorder=1
-${ov}borderStyle=1
-${ov}labelLeft=0
-#[cf]
-  "
-}
-#[cf]
-#[cf]
-#[cf]
-#[of]:progressSlider
 #[of]:static methods
 #[of]:function progressSlider.staticconstructor {
 function progressSlider.staticconstructor {
@@ -1931,25 +1970,6 @@ function progressSlider.buildSlider {
 }
 #[cf]
 #[cf]
-#[of]:class methods
-#[of]:function progressSlider.classconstructor {
-function progressSlider.classconstructor {
-#[c]object
-#[of]:  includes
-  include hash
-#[cf]
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-#[of]:    class data
-
-#[cf]
-  "
-}
-#[cf]
-#[cf]
 #[of]:dynamic methods
 #[of]:function progressSlider.constructor {
 function progressSlider.constructor {
@@ -2040,8 +2060,24 @@ ${ov}hasFocus=0
 #[cf]
 #[cf]
 #[of]:fileBrowser
+#[of]:class methods
+function fileBrowser.classconstructor {
+#[c]object
+#[of]:  includes
+  include hash
+#[cf]
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+#[of]:    class data
+
+#[cf]
+  "
+}
+#[cf]
 #[of]:static methods
-#[of]:function fileBrowser.staticconstructor {
 function fileBrowser.staticconstructor {
 #[of]:  function fileBrowser.runEventAction {
 function fileBrowser.runEventAction {
@@ -2236,28 +2272,7 @@ function fileBrowser.setcursorxy {
 #[cf]
 }
 #[cf]
-#[cf]
-#[of]:class methods
-#[of]:function fileBrowser.classconstructor {
-function fileBrowser.classconstructor {
-#[c]object
-#[of]:  includes
-  include hash
-#[cf]
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-#[of]:    class data
-
-#[cf]
-  "
-}
-#[cf]
-#[cf]
 #[of]:dynamic methods
-#[of]:function fileBrowser.constructor {
 function fileBrowser.constructor {
 #[of]:set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
@@ -2376,6 +2391,5 @@ ${ov}pwd=${q}${d}{${ov}pwd%/}${q}
 #[c]    ${o}.updateFileList
   "
 }
-#[cf]
 #[cf]
 #[cf]
