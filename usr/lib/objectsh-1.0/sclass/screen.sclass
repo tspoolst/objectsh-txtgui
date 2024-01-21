@@ -1575,7 +1575,7 @@ ${ov}borderStyle=1
 #[cf]
 #[of]:progressSlider
 #[of]:class meta
-progressSlider_cm_extends=screenCore
+progressSlider_cm_extends=screenObject
 #[cf]
 #[of]:static methods
 function progressSlider.staticconstructor {
@@ -1679,7 +1679,7 @@ ${ov}height=1
 #[cf]
 #[of]:fileBrowser
 #[of]:class meta
-fileBrowser_cm_extends=screenCore
+fileBrowser_cm_extends=screenObject
 #[cf]
 #[of]:static methods
 function fileBrowser.staticconstructor {
