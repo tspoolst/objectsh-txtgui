@@ -1872,7 +1872,8 @@ setPwd {
 #[cf]
   eval "
     typeset ${omv}newPwd
-    ${omv}newPwd=${q}${d}{1%/}${q}
+    ${omv}newPwd=${q}${d}{1}${q}
+    [[ ${d}{#${omv}newPwd} -gt 1 ]] && ${omv}newPwd=${q}${d}{${omv}newPwd%/}${q}
   
     [[ -z ${q}${d}{${omv}newPwd}${q} ]] && ${omv}newPwd=${d}(pwd)
     
