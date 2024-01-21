@@ -169,23 +169,6 @@ function screenCore.constructor {
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
-  typeset _i
-  for _i in height width title drawBorder borderStyle ; do
-    eval "
-      newvar ${ov}${_i}
-      function ${o}.set${_i^} {
-        ${ov}${_i}=${q}${d}1${q}
-      }
-
-      function ${o}.get${_i^} {
-        if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
-          echo ${q}${d}{${ov}${_i}}${q}
-        else
-          eval ${d}1=\\${q}\\${d}{${ov}${_i}}\\${q}
-        fi
-      }
-    "
-  done
 #[of]:  bindEventAction
 m=bindEventAction
 omv=${o}_mv_${m}_
@@ -225,47 +208,22 @@ eval "function ${o}.${m} {
   echo -en ${q}\\033[0m${q}
 }"
 #[cf]
-#[of]:  trimString
-m=trimString
-omv=${o}_mv_${m}_
-eval "function ${o}.${m} {
-  typeset _s
-  _s=${q}${d}3${q}
-  while ((${d}(wc -L <<< ${q}${d}{_s}${q})>${d}{2}));do _s=${q}${d}{_s%?}${q};done
-  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
-    echo ${q}${d}{_s}${q}
-  else
-    eval ${d}1=\\${q}\\${d}{_s}\\${q}
-  fi
-
-}"
-#[cf]
-#[of]:  stringLength
-m=stringLength
-omv=${o}_mv_${m}_
-eval "function ${o}.${m} {
-  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
-    echo ${d}(wc -L <<< ${q}${d}2${q})
-  else
-    eval ${q}${d}1=\\${d}(wc -L <<< \\${q}\\${d}2\\${q})${q}
-  fi
-}"
+#[of]:  public settable object data
+  newPublicVar height width title drawBorder borderStyle
 #[cf]
   eval "
 #[of]:    object data
-newvar ${ov}height ${ov}width ${ov}title
 newvar ${ov}leftOffset ${ov}topOffset
-newvar ${ov}drawBorder ${ov}borderStyle
 new hash ${ov}inputEventActions
 
 ${ov}leftOffset=0
 ${ov}topOffset=0
 
+${ov}drawBorder=0
+${ov}borderStyle=0
+
 ${ov}width=${q}${d}{1:-0}${q}
 ${ov}height=${q}${d}{2:-0}${q}
-
-${ov}drawBorder=1
-${ov}borderStyle=1
 #[cf]
   "
 }
@@ -277,23 +235,6 @@ ${ov}borderStyle=1
 #[cf]
 #[of]:class meta
 screenManage_cm_extends=screenCore
-#[cf]
-#[of]:class methods
-function screenManage.classconstructor {
-#[c]object
-#[of]:  includes
-
-#[cf]
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-#[of]:    class data
-
-#[cf]
-  "
-}
 #[cf]
 #[of]:static methods
 function screenManage.staticconstructor {
@@ -493,52 +434,6 @@ function screen.classconstructor {
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
-#[of]:    function ${c}.calcscreensize {
-function ${c}.calcscreensize {
-  set -- ${d}(stty size 2>/dev/null)
-  ${cv}height=${d}1
-  ${cv}width=${d}2
-  [[ -z ${q}${d}{${cv}height}${q} ]] && {
-    ${cv}height=24
-    ${cv}width=80
-  }
-#[c]  echo ${d}{${cv}height} ${d}{${cv}width}
-#[c]  read -n 1
-  return 0
-}
-#[cf]
-#[of]:    function ${c}.setScreenHeight {
-function ${c}.setScreenHeight {
-  #to get the resize command
-  #sudo apt install xterm
-  typeset ${cmv}height
-  
-  if isset TERM && [[ -z ${q}${d}{TERM##xterm*}${q} ]] && which resize &>/dev/null ; then
-    ${cmv}height=${d}1
-    resize -s ${d}{${cmv}height} ${d}{${cv}width} &>/dev/null || return 1
-    ${cv}height=${d}{${cmv}height}
-  else
-    return 1
-  fi
-  return 0
-}
-#[cf]
-#[of]:    function ${c}.setScreenWidth {
-function ${c}.setScreenWidth {
-  #to get the resize command
-  #sudo apt install xterm
-  typeset ${cmv}width
-
-  if isset TERM && [[ -z ${q}${d}{TERM##xterm*}${q} ]] && which resize &>/dev/null ; then
-    ${cmv}width=${d}1
-    resize -s ${d}{${cv}height} ${d}{${cmv}width} &>/dev/null || return 1
-    ${cv}width=${d}{${cmv}width}
-  else
-    return 1
-  fi
-  return 0
-}
-#[cf]
 #[of]:    function ${c}.mouseEnable {
 function ${c}.mouseEnable {
   stty -echo
@@ -555,10 +450,32 @@ function ${c}.mouseDisable {
   echo -en '\e[?1000;1001;1002;1003;1006;1015l'
 }
 #[cf]
+#[of]:    function ${c}.stringLength {
+function ${c}.stringLength {
+  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+    echo ${d}(wc -L <<< ${q}${d}2${q})
+  else
+    eval ${q}${d}1=\\${d}(wc -L <<< \\${q}\\${d}2\\${q})${q}
+  fi
+}
+#[cf]
+#[of]:    function ${c}.trimString {
+function ${c}.trimString {
+  typeset _s
+  _s=${q}${d}3${q}
+  while ((${d}(wc -L <<< ${q}${d}{_s}${q})>${d}{2}));do _s=${q}${d}{_s%?}${q};done
+  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+    echo ${q}${d}{_s}${q}
+  else
+    eval ${d}1=\\${q}\\${d}{_s}\\${q}
+  fi
+
+}
+#[cf]
 #[of]:    class data
 newvar ${cv}height ${cv}width
 #[cf]
-    ${c}.calcscreensize
+    ${c}.calcScreenSize
   "
 }
 #[cf]
@@ -584,7 +501,7 @@ open {
 
     ${omv}refreshInterval=${q}${d}{${ov}refreshInterval}${q}
 
-    ${c}.calcscreensize
+    ${o}.calcScreenSize
     ${o}.focusListBuild
     ${o}.focusTriggerEnterEvent
     clear
@@ -910,8 +827,7 @@ refresh {
 EOF
 eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[c]
-#[c]
+
 #[of]:  timerTriggerAdd {
 IFS='' read -r -d '' ${omv}method <<'EOF'
 timerTriggerAdd {
@@ -963,7 +879,7 @@ timerTriggerDel {
 EOF
 eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[c]
+
 #[of]:  processEvent {
 IFS='' read -r -d '' ${omv}method <<'EOF'
 processEvent {
@@ -1002,7 +918,7 @@ processEvent {
               ${q}${d}{${omv}event}${q} \
               ${q}${d}{${omv}currentRelX}${q} ${q}${d}{${omv}currentRelY}${q} \
               ${q}${d}{${omv}mouseX}${q} ${q}${d}{${omv}mouseY}${q}
-            #${c}.calcscreensize
+            #${o}.calcScreenSize
             ${o}.refresh
             ${c}.mouseEnable -d
           else
@@ -1014,7 +930,32 @@ processEvent {
 EOF
 eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[c]
+
+#[of]:  focusListBuild {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+focusListBuild {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}objectId ${omv}objectName ${omv}focusListKey ${omv}focusList
+    unset ${ov}focusListMerged
+
+    for ${omv}focusListKey in ${q}${d}{${ov}focusList[@]}${q} ; do
+      ${omv}objectName=${q}${d}{${ov}objectNames[${d}{${omv}focusListKey}]}${q}
+      if isfnset ${d}{${omv}objectName}.focusList ; then
+        ${d}{${omv}objectName}.focusList ${omv}focusList ${q}${d}{${omv}objectName}${q}
+        apush ${ov}focusListMerged ${q}${d}{${omv}focusList[@]}${q}
+      else
+        apush ${ov}focusListMerged ${q}${d}{${omv}objectName}${q}
+      fi
+    done
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[cf]
 #[of]:  focusSelectByName {
 IFS='' read -r -d '' ${omv}method <<'EOF'
 focusSelectByName {
@@ -1053,33 +994,6 @@ focusSelectByName {
 EOF
 eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[c]
-#[of]:  focusListBuild {
-IFS='' read -r -d '' ${omv}method <<'EOF'
-focusListBuild {
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-    typeset ${omv}objectId ${omv}objectName ${omv}focusListKey ${omv}focusList
-    unset ${ov}focusListMerged
-
-    for ${omv}focusListKey in ${q}${d}{${ov}focusList[@]}${q} ; do
-      ${omv}objectName=${q}${d}{${ov}objectNames[${d}{${omv}focusListKey}]}${q}
-      if isfnset ${d}{${omv}objectName}.focusList ; then
-        ${d}{${omv}objectName}.focusList ${omv}focusList ${q}${d}{${omv}objectName}${q}
-        apush ${ov}focusListMerged ${q}${d}{${omv}focusList[@]}${q}
-      else
-        apush ${ov}focusListMerged ${q}${d}{${omv}objectName}${q}
-      fi
-    done
-  "
-}
-EOF
-eval "eval \"function \${c}.\${${omv}method}\""
-#[cf]
-#[c]
 #[of]:  focusTriggerEnterEvent {
 IFS='' read -r -d '' ${omv}method <<'EOF'
 focusTriggerEnterEvent {
@@ -1222,36 +1136,87 @@ focusPrevious {
 EOF
 eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-}
-#[cf]
-#[of]:dynamic methods
-function screen.constructor {
+
+#[of]:  calcscreensize {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+calcScreenSize {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
-#[c]
-#[of]:  getHeight
-m=getHeight
-omv=${o}_mv_${m}_
-eval "function ${o}.${m} {
-  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
-    echo ${q}${d}{${cv}height}${q}
-  else
-    eval ${d}1=\\${q}\\${d}{${cv}height}\\${q}
-  fi
-}"
+  eval "
+    set -- ${d}(stty size 2>/dev/null)
+    ${ov}height=${d}1
+    ${ov}width=${d}2
+    [[ -z ${q}${d}{${ov}height}${q} ]] && {
+      ${ov}height=24
+      ${ov}width=80
+    }
+#[c]    echo ${d}{${ov}height} ${d}{${ov}width}
+#[c]    read -n 1
+    return 0
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  getWidth
-m=getWidth
-omv=${o}_mv_${m}_
-eval "function ${o}.${m} {
-  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
-    echo ${q}${d}{${cv}width}${q}
-  else
-    eval ${d}1=\\${q}\\${d}{${cv}width}\\${q}
-  fi
-}"
+#[of]:  setScreenHeight {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+setScreenHeight {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    #to get the resize command
+    #sudo apt install xterm
+    typeset ${omv}height
+    
+    if isset TERM && [[ -z ${q}${d}{TERM##xterm*}${q} ]] && which resize &>/dev/null ; then
+      ${omv}height=${d}1
+      resize -s ${d}{${omv}height} ${d}{${ov}width} &>/dev/null || return 1
+      ${ov}height=${d}{${omv}height}
+    else
+      return 1
+    fi
+    return 0
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[cf]
+#[of]:  setScreenWidth {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+setScreenWidth {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    #to get the resize command
+    #sudo apt install xterm
+    typeset ${omv}width
+  
+    if isset TERM && [[ -z ${q}${d}{TERM##xterm*}${q} ]] && which resize &>/dev/null ; then
+      ${omv}width=${d}1
+      resize -s ${d}{${ov}height} ${d}{${omv}width} &>/dev/null || return 1
+      ${ov}width=${d}{${omv}width}
+    else
+      return 1
+    fi
+    return 0
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[cf]
+}
+#[cf]
+#[of]:dynamic methods
+function screen.constructor {
+#[of]:set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
 #[cf]
 #[of]:  setRefreshInterval
 m=setRefreshInterval
@@ -1331,8 +1296,10 @@ window_cm_extends=screenManage
 #[cf]
 #[of]:static methods
 function window.staticconstructor {
-#[of]:  function window.refresh {
-function window.refresh {
+  typeset ${omv}method
+#[of]:refresh {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+refresh {
 #[c]object -|var
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
@@ -1372,9 +1339,12 @@ function window.refresh {
     return 0
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  function window.getEventAction {
-function window.getEventAction {
+#[of]:getEventAction {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+getEventAction {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
@@ -1431,10 +1401,12 @@ function window.getEventAction {
     fi
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[c]
-#[of]:  function window.focusList {
-function window.focusList {
+#[of]:focusList {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+focusList {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
@@ -1459,6 +1431,8 @@ function window.focusList {
     aset ${d}1 ${q}${d}{${omv}focusListMerged[@]}${q}
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
 }
 #[cf]
@@ -1470,8 +1444,7 @@ function window.constructor {
 #[cf]
   eval "
 #[of]:    object data
-newvar ${ov}objectPositions ${ov}leftOffset ${ov}topOffset
-newvar ${ov}leftOffset ${ov}topOffset
+newvar ${ov}objectPositions
 new referenceid ${ov}objectIdPool
 
 ${o}.setWidth ${q}${d}{1:-0}${q}
@@ -1491,23 +1464,6 @@ ${o}.setHeight ${q}${d}{2:-0}${q}
 #[cf]
 #[of]:class meta
 screenObject_cm_extends=screenCore
-#[cf]
-#[of]:class methods
-function screenObject.classconstructor {
-#[c]object
-#[of]:  includes
-  include hash
-#[cf]
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-#[of]:    class data
-
-#[cf]
-  "
-}
 #[cf]
 #[of]:static methods
 function screenObject.staticconstructor {
@@ -1544,7 +1500,7 @@ refresh {
 
     ((${ov}hasFocus)) && ${o}.styleSetReverse
     
-    ${o}.stringLength ${omv}length ${q}${d}{${ov}title}${q}
+    screen.stringLength ${omv}length ${q}${d}{${ov}title}${q}
 #[c]    ${o}.setcursorxy 0 ${d}((${ov}height/2))
 #[c]    printf ${q}%${d}((${ov}width))s${q} ${q}${q}
     if ((${ov}txtAlignment)) ; then
@@ -1568,36 +1524,14 @@ function screenObject.constructor {
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
-  typeset _i
-  for _i in txtAlignment  ; do
-    eval "
-      newvar ${ov}${_i}
-      function ${o}.set${_i^} {
-        ${ov}${_i}=${q}${d}1${q}
-      }
-
-      function ${o}.get${_i^} {
-        if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
-          echo ${q}${d}{${ov}${_i}}${q}
-        else
-          eval ${d}1=\\${q}\\${d}{${ov}${_i}}\\${q}
-        fi
-      }
-    "
-  done
+#[of]:  public settable object data
+  newPublicVar txtAlignment
+#[cf]
   eval "
 #[of]:    object data
-newvar ${ov}height ${ov}width ${ov}title
-newvar ${ov}leftOffset ${ov}topOffset
-newvar ${ov}txtAlignment ${ov}drawBorder ${ov}borderStyle
 newvar ${ov}hasFocus
 
-${ov}drawBorder=1
-${ov}borderStyle=1
 ${ov}txtAlignment=0
-
-${ov}width=${q}${d}{1:-0}${q}
-${ov}height=${q}${d}{2:-1}${q}
 #[cf]
   "
 }
@@ -1626,13 +1560,14 @@ eval "function ${o}.${m} {
       ${ov}width=${d}{#${ov}title}
     fi
   else
-    ${o}.trimString ${ov}title ${d}{${ov}width} ${q}${d}{${ov}title}${q}
+    screen.trimString ${ov}title ${d}{${ov}width} ${q}${d}{${ov}title}${q}
   fi
 }"
 #[cf]
   eval "
 #[of]:    object data
-
+${ov}drawBorder=1
+${ov}borderStyle=1
 #[cf]
   "
 }
@@ -1644,8 +1579,10 @@ progressSlider_cm_extends=screenCore
 #[cf]
 #[of]:static methods
 function progressSlider.staticconstructor {
-#[of]:  function progressSlider.refresh {
-function progressSlider.refresh {
+  typeset ${omv}method
+#[of]:  refresh {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+refresh {
 #[c]object
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
@@ -1691,9 +1628,12 @@ function progressSlider.refresh {
     echo -n ${q}<${d}{${cmv}timeSlider:0:${d}((${omv}songPercentagePlayed*${omv}timeSliderLength/100))}${d}(printf '%02d%%' ${q}${d}{${omv}songPercentagePlayed#0}${q})${d}{${cmv}timeSlider:${d}((${omv}songPercentagePlayed*${omv}timeSliderLength/100)):${d}((${omv}timeSliderLength-(${omv}songPercentagePlayed*${omv}timeSliderLength/100) ))}>${q}
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  function progressSlider.buildSlider {
-function progressSlider.buildSlider {
+#[of]:  buildSlider {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+buildSlider {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
@@ -1706,6 +1646,8 @@ function progressSlider.buildSlider {
     ${ov}timeSliderLength=${q}${d}{#${ov}timeSlider}${q}
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
 }
 #[cf]
@@ -1741,8 +1683,10 @@ fileBrowser_cm_extends=screenCore
 #[cf]
 #[of]:static methods
 function fileBrowser.staticconstructor {
-#[of]:  function fileBrowser.refresh {
-function fileBrowser.refresh {
+  typeset ${omv}method
+#[of]:  refresh {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+refresh {
 #[c]object
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
@@ -1754,6 +1698,8 @@ function fileBrowser.refresh {
       ${ov}leftOffset=${q}${d}{1}${q}
       ${ov}topOffset=${q}${d}{2}${q}
     }
+
+    [[ -z ${q}${d}{${ov}pwd}${q} ]] && ${o}.setPwd
 
     ${o}.runEventAction refresh
 
@@ -1774,9 +1720,12 @@ function fileBrowser.refresh {
     done
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  function fileBrowser.updateFileList {
-function fileBrowser.updateFileList {
+#[of]:  updateFileList {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+updateFileList {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
@@ -1791,7 +1740,7 @@ function fileBrowser.updateFileList {
 
     unset ${ov}fileListTrimmed
     for ${omv}entry in ${q}${d}{${ov}fileList[@]}${q} ; do
-      ${o}.trimString ${omv}entry ${d}((${ov}width-2)) ${q}${d}{${omv}entry}${q}
+      screen.trimString ${omv}entry ${d}((${ov}width-2)) ${q}${d}{${omv}entry}${q}
       apush ${ov}fileListTrimmed ${q}${d}{${omv}entry}${q}
     done
 
@@ -1802,9 +1751,12 @@ function fileBrowser.updateFileList {
     ${ov}selectedFile=0
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  function fileBrowser.selectFile {
-function fileBrowser.selectFile {
+#[of]:  selectFile {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+selectFile {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
@@ -1825,7 +1777,7 @@ function fileBrowser.selectFile {
           break
         }
       done
-      for ((${ov}fileListIndexOffset=0;${ov}fileListIndexOffset<${ov}selectedFile-${ov}height;${ov}fileListIndexOffset+=${ov}height)) ; do :;done
+      for ((${ov}fileListIndexOffset=0;${ov}fileListIndexOffset<${ov}indexLookupTableReversed[${d}{${ov}selectedFile}]-${ov}height;${ov}fileListIndexOffset+=${ov}height)) ; do :;done
     fi
 
     [[ ${q}${d}{${ov}fileList[${d}{${ov}selectedFile}]}${q} = ${q}..${q} ]] && {
@@ -1844,9 +1796,12 @@ function fileBrowser.selectFile {
     return 0
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  function fileBrowser.incSelectedFile {
-function fileBrowser.incSelectedFile {
+#[of]:  incSelectedFile {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+incSelectedFile {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
@@ -1862,9 +1817,12 @@ function fileBrowser.incSelectedFile {
     ((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedFile}]}-${ov}fileListIndexOffset>${ov}height-1)) && ${o}.pageDown
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  function fileBrowser.decSelectedFile {
-function fileBrowser.decSelectedFile {
+#[of]:  decSelectedFile {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+decSelectedFile {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
@@ -1883,9 +1841,12 @@ function fileBrowser.decSelectedFile {
     }
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  function fileBrowser.getSelectedFile {
-function fileBrowser.getSelectedFile {
+#[of]:  getSelectedFile {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+getSelectedFile {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
@@ -1898,6 +1859,35 @@ function fileBrowser.getSelectedFile {
     fi
   "
 }
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[cf]
+#[of]:  setPwd {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+setPwd {
+#[c]object
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}newPwd
+    ${omv}newPwd=${q}${d}{1%/}${q}
+  
+    [[ -z ${q}${d}{${omv}newPwd}${q} ]] && ${omv}newPwd=${d}(pwd)
+    
+    [[ ${q}${d}{${ov}pwd}${q} != ${q}${d}{${omv}newPwd}${q} ]] && {
+      if [[ -d ${q}${d}{${omv}newPwd}${q} ]] ; then
+        ${ov}pwd=${q}${d}{${omv}newPwd}${q}
+      else
+        ${ov}pwd=${d}(pwd)
+      fi
+      ${o}.updateFileList
+    }
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
 }
 #[cf]
@@ -1907,23 +1897,6 @@ function fileBrowser.constructor {
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
-  typeset _i
-  for _i in pwd ; do
-    eval "
-      newvar ${ov}${_i}
-      function ${o}.set${_i^} {
-        ${ov}${_i}=${q}${d}1${q}
-      }
-
-      function ${o}.get${_i^} {
-        if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
-          echo ${q}${d}{${ov}${_i}}${q}
-        else
-          eval ${d}1=\\${q}\\${d}{${ov}${_i}}\\${q}
-        fi
-      }
-    "
-  done
 #[of]:  fileListLookupShuffle
 m=fileListLookupShuffle
 omv=${o}_mv_${m}_
@@ -1962,20 +1935,6 @@ eval "function ${o}.${m} {
   ((${ov}fileListIndexOffset>0)) && ((${ov}fileListIndexOffset--))
 }"
 #[cf]
-#[of]:  setPwd
-m=setPwd
-omv=${o}_mv_${m}_
-eval "function ${o}.${m} {
-  [[ ${q}${d}{${ov}pwd}${q} != ${q}${d}1${q} ]] && {
-    if [[ -d ${q}${d}1${q} ]] ; then
-      ${ov}pwd=${q}${d}1${q}
-    else
-      ${ov}pwd=${d}(pwd)
-    fi
-    ${o}.updateFileList
-  }
-}"
-#[cf]
 #[of]:  pageUp
 m=pageUp
 omv=${o}_mv_${m}_
@@ -1993,16 +1952,15 @@ eval "function ${o}.${m} {
   ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}{${ov}fileListIndexOffset}]}
 }"
 #[cf]
+#[of]:  public settable object data
+  newPublicVar pwd
+#[cf]
   eval "
 #[of]:    object data
 newvar ${ov}fileList ${ov}fileListTrimmed ${ov}fileListIndexOffset ${ov}indexLookupTable
-newvar ${ov}pwd ${ov}selectedFile
+newvar ${ov}selectedFile
 
-${ov}width=${q}${d}{1:-0}${q}
-${ov}height=${q}${d}{2:-0}${q}
-
-${ov}pwd=${q}${d}{3:-${d}(pwd)}${q}
-${ov}pwd=${q}${d}{${ov}pwd%/}${q}
+(($#>2)) && ${o}.setPwd ${q}${d}{3:-${d}(pwd)}${q}
 #[cf]
 #[c]    ${o}.updateFileList
   "
