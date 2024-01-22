@@ -145,24 +145,6 @@ runEventAction {
 EOF
 eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  setcursorxy {
-IFS='' read -r -d '' ${omv}method <<'EOF'
-setcursorxy {
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-    typeset ${omv}x ${omv}y
-    ${omv}x=${d}1
-    ${omv}y=${d}2
-    echo -en ${q}\\\\033[${d}((${ov}topOffset+1+${omv}y));${d}((${ov}leftOffset+1+${omv}x))H${q}
-    return 0
-  "
-}
-EOF
-eval "eval \"function \${c}.\${${omv}method}\""
-#[cf]
 }
 #[cf]
 #[of]:dynamic methods
@@ -179,6 +161,17 @@ eval "function ${o}.${m} {
   for _i in ${q}${d}{@:1:${d}#-1}${q} ; do
     ${ov}inputEventActions.setkey ${q}${d}{_i}${q} ${q}${d}{@: -1}${q}
   done
+}"
+#[cf]
+#[of]:  setcursorxy {
+m=setcursorxy
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  typeset ${omv}x ${omv}y
+  ${omv}x=${d}1
+  ${omv}y=${d}2
+  echo -en ${q}\\\\033[${d}((${ov}topOffset+1+${omv}y));${d}((${ov}leftOffset+1+${omv}x))H${q}
+  return 0
 }"
 #[cf]
 #[of]:  getEventAction
