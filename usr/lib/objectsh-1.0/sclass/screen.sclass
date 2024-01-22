@@ -498,7 +498,7 @@ open {
 
     ${o}.calcScreenSize
     ${o}.focusListBuild
-    ${o}.focusTriggerEnterEvent
+    ${o}.focusTriggerFocusEvent Enter
     clear
     ${o}.refresh
     ${c}.mouseEnable -d
@@ -989,9 +989,9 @@ focusSelectByName {
 EOF
 eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  focusTriggerEnterEvent {
+#[of]:  focusTriggerFocusEvent {
 IFS='' read -r -d '' ${omv}method <<'EOF'
-focusTriggerEnterEvent {
+focusTriggerFocusEvent {
 #[c]
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
@@ -1000,28 +1000,10 @@ focusTriggerEnterEvent {
   eval "
     ((${d}{#${ov}focusList[@]})) || return 0
 
-    typeset ${omv}objectName
+    typeset ${omv}objectName ${omv}event
+    ${omv}event=${d}{1^}
     ${omv}objectName=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
-    ${o}.processEvent ${q}${d}{${omv}objectName}${q} ${q}focusEnter${q} 0 0 0 0
-  "
-}
-EOF
-eval "eval \"function \${c}.\${${omv}method}\""
-#[cf]
-#[of]:  focusTriggerExitEvent {
-IFS='' read -r -d '' ${omv}method <<'EOF'
-focusTriggerExitEvent {
-#[c]
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-    ((${d}{#${ov}focusList[@]})) || return 0
-
-    typeset ${omv}objectName
-    ${omv}objectName=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
-    ${o}.processEvent ${q}${d}{${omv}objectName}${q} ${q}focusExit${q} 0 0 0 0
+    ${o}.processEvent ${q}${d}{${omv}objectName}${q} ${q}focus${d}{${omv}event}${q} 0 0 0 0
   "
 }
 EOF
