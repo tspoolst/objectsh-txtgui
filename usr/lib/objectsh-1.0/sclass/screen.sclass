@@ -45,7 +45,7 @@
 #[c]screen object base object
 #[cf]
 #[of]:class meta
-screenCore_cm_extends=
+screenCore_cm_baseClass=
 #[cf]
 #[of]:class methods
 function screenCore.classconstructor {
@@ -99,11 +99,11 @@ drawBorder {
 #[cf]
 #[of]:    draw left border
     ${o}.setcursorxy 0 1
-    printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
+    printf -v ${omv}line ${q}%${d}((${ov}height-3))s${q} ${q}${q};{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
 #[cf]
 #[of]:    draw right border
 #[c]    ${o}.setcursorxy ${d}((${ov}width-1)) 1
-#[c]    printf -v ${omv}line '%*s' $((${ov}height-3));{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
+#[c]    printf -v ${omv}line ${q}%${d}((${ov}height-3))s${q} ${q}${q};{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
 
     for ((${omv}index=1;${omv}index<${ov}height-1;${omv}index++)) ; do
       ${o}.setcursorxy $((${ov}width-1)) ${d}{${omv}index}
@@ -137,6 +137,8 @@ runEventAction {
       trap ${q}echo TRAPed signal${q} INT
       eval ${q}${d}{${omv}action}${q}
       trap - INT
+    else
+      return 1
     fi
   "
 }
@@ -234,7 +236,7 @@ ${ov}height=${q}${d}{2:-0}${q}
 #[c]screen object base object
 #[cf]
 #[of]:class meta
-screenManage_cm_extends=screenCore
+screenManage_cm_baseClass=screenCore
 #[cf]
 #[of]:static methods
 function screenManage.staticconstructor {
@@ -421,7 +423,7 @@ function screenManage.constructor {
 #[c]    filebrowser
 #[cf]
 #[of]:class meta
-screen_cm_extends=screenManage
+screen_cm_baseClass=screenManage
 #[cf]
 #[of]:class methods
 function screen.classconstructor {
@@ -473,9 +475,9 @@ function ${c}.trimString {
 }
 #[cf]
 #[of]:    class data
-newvar ${cv}height ${cv}width
+
 #[cf]
-    ${c}.calcScreenSize
+    ${o}.calcScreenSize
   "
 }
 #[cf]
@@ -1292,7 +1294,7 @@ ${ov}refreshInterval=10
 #[cf]
 #[of]:window
 #[of]:class meta
-window_cm_extends=screenManage
+window_cm_baseClass=screenManage
 #[cf]
 #[of]:static methods
 function window.staticconstructor {
@@ -1374,7 +1376,7 @@ getEventAction {
          ${omv}mouseY <= ${ov}objectPositions[4*${omv}objectId+3] ))
       then
         ${omv}objectName=${q}${d}{${ov}objectNames[${d}{${omv}objectId}]}${q}
-#[c]echo ${q}---|${d}{${ov}objectNames[@]}|---${q}
+#[c]        echo ${q}---|${d}{${ov}objectNames[@]}|---${q}
         ${omv}relX=${d}(( ${omv}mouseX - ${ov}objectPositions[4*${omv}objectId+0] ))
         ${omv}relY=${d}(( ${omv}mouseY - ${ov}objectPositions[4*${omv}objectId+2] ))
 #[c]        echo ${q}${d}{${omv}objectName} ${d}{${ov}objectPositions[4*${omv}objectId+0]} ${d}{${ov}objectPositions[4*${omv}objectId+1]} ${d}{${ov}objectPositions[4*${omv}objectId+2]} ${d}{${ov}objectPositions[4*${omv}objectId+3]}${q}
@@ -1384,8 +1386,6 @@ getEventAction {
   
 #[c]    ((gl_debug>0)) && 
 #[c]    echo ${q}w - ${d}{!${ov}objectPositions[@]} | ${d}{${ov}objectPositions[@]} -- ${o}_${d}{${omv}objectName:---} ${d}{${omv}mouseEvent} ${d}{${omv}relX} ${d}{${omv}relY} ${d}{${omv}mouseX} ${d}{${omv}mouseY}${q}
-
-#[c][[ ${q}${o}_${d}{${omv}objectName}${q} = ${q}fileBrowserBox_fb1${q} ]] && set -xv
 
     if [[ -n ${q}${d}{${omv}objectName}${q} ]] ; then
 #[c]      echo ${d}{${omv}objectName}.getEventAction ${q}${d}1${q} ${q}${d}2${q} ${omv}currentRelX ${omv}currentRelY ${q}${d}{${omv}mouseEvent}${q} ${d}{${omv}relX} ${d}{${omv}relY} || return 1
@@ -1463,7 +1463,7 @@ ${o}.setHeight ${q}${d}{2:-0}${q}
 #[c]screen object base object
 #[cf]
 #[of]:class meta
-screenObject_cm_extends=screenCore
+screenObject_cm_baseClass=screenCore
 #[cf]
 #[of]:static methods
 function screenObject.staticconstructor {
@@ -1537,12 +1537,12 @@ ${ov}txtAlignment=0
 }
 #[cf]
 #[cf]
-#[of]:button
+#[of]:label
 #[of]:class meta
-button_cm_extends=screenObject
+label_cm_baseClass=screenObject
 #[cf]
 #[of]:dynamic methods
-function button.constructor {
+function label.constructor {
 #[of]:set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
@@ -1566,6 +1566,24 @@ eval "function ${o}.${m} {
 #[cf]
   eval "
 #[of]:    object data
+
+#[cf]
+  "
+}
+#[cf]
+#[cf]
+#[of]:button
+#[of]:class meta
+button_cm_baseClass=label
+#[cf]
+#[of]:dynamic methods
+function button.constructor {
+#[of]:set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+#[of]:    object data
 ${ov}drawBorder=1
 ${ov}borderStyle=1
 #[cf]
@@ -1573,12 +1591,12 @@ ${ov}borderStyle=1
 }
 #[cf]
 #[cf]
-#[of]:progressSlider
+#[of]:slideBar
 #[of]:class meta
-progressSlider_cm_extends=screenObject
+slideBar_cm_baseClass=screenObject
 #[cf]
 #[of]:static methods
-function progressSlider.staticconstructor {
+function slideBar.staticconstructor {
   typeset ${omv}method
 #[of]:  refresh {
 IFS='' read -r -d '' ${omv}method <<'EOF'
@@ -1589,7 +1607,7 @@ refresh {
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
-    typeset ${omv}timeSliderLength ${omv}songLength ${omv}songTimePlayed ${omv}songPercentagePlayed
+    typeset ${omv}sliderLength ${omv}songLength ${omv}songTimePlayed
     [[ -n ${q}${d}{2}${q} ]] && {
       ${ov}leftOffset=${q}${d}{1}${q}
       ${ov}topOffset=${q}${d}{2}${q}
@@ -1601,31 +1619,56 @@ refresh {
       [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${ov}hasFocus=1 || ${ov}hasFocus=0
     }
 
-    ! ((${ov}hasFocus)) && ${cmv}timeSlider=${q}${d}{${ov}timeSlider}${q}
-    ((${ov}hasFocus)) && ${cmv}timeSlider=${q}${d}{${ov}timeSliderFocused}${q}
-
-    ${omv}timeSliderLength=${d}((${ov}timeSliderLength-3))
-    ${omv}songLength=${d}(echo '{ ${q}command${q}: [${q}get_property${q}, ${q}duration${q}] }' | socat - /tmp/mpvsocket 2>/dev/null | grep -oP '${q}data${q}:\\K[^,]+')
-    ${omv}songTimePlayed=${d}(echo '{ ${q}command${q}: [${q}get_property${q}, ${q}playback-time${q}] }' | socat - /tmp/mpvsocket 2>/dev/null | grep -oP '${q}data${q}:\\K[^,]+')
-    [[ -z ${q}${d}{${omv}songLength}${q} || -z ${q}${d}{${omv}songTimePlayed##*[^[:digit:].]*}${q} ]] && {
-      ${o}.setcursorxy 0 0
-      echo -n ${q}<00%${d}{${cmv}timeSlider:3:${d}((${omv}timeSliderLength))}>${q}
-      return
-    }
+    if ((${ov}hasFocus)) ; then
+      ${omv}h='~'
+      ${omv}v='||'
+    else
+      ${omv}h='-'
+      ${omv}v='::'
+    fi
+    ${omv}t='/\\\\'
+    ${omv}b='\\\\/'
     
-#[c]    ${omv}songPercentagePlayed=${d}(bc -l <<< ${q}${d}{${omv}songTimePlayed}/${d}{${omv}songLength}*100${q})
-    ${omv}songLength=${q}${d}{${omv}songLength//./}${q}
-    ${omv}songLength=${q}${d}{${omv}songLength:0:-3}${q}
-    ${omv}songTimePlayed=${q}${d}{${omv}songTimePlayed//./}${q}
-    ${omv}songTimePlayed=${q}${d}{${omv}songTimePlayed:0:-3}${q}
-    ${omv}songPercentagePlayed=${d}((10#${d}{${omv}songTimePlayed}*100/10#${d}{${omv}songLength}))
+    ${omv}sliderLength=${d}((${ov}sliderLength-3))
 
-    ${omv}songPercentagePlayed=${q}${d}{${omv}songPercentagePlayed%%.*}${q}
-    [[ -z ${q}${d}{${omv}songPercentagePlayed}${q} ]] && ${omv}songPercentagePlayed=0
-  
-#[c]    echo -ne ${q}${d}{${ov}timeSliderErase}${q}
+    ## set position only if not a direct sub-class call
+    [ ${q}${c}${q} != ${q}${smc}${q} ] && {
+      typeset ${omv}sliderPositionPercentage
+      if isset ${ov}positionUpdater && isfnset ${q}${d}{${ov}positionUpdater}${q} ; then
+        ${d}{${ov}positionUpdater} ${q}${omv}sliderPositionPercentage${q}
+      else
+        ${omv}sliderPositionPercentage=50
+      fi
+    }
+
     ${o}.setcursorxy 0 0
-    echo -n ${q}<${d}{${cmv}timeSlider:0:${d}((${omv}songPercentagePlayed*${omv}timeSliderLength/100))}${d}(printf '%02d%%' ${q}${d}{${omv}songPercentagePlayed#0}${q})${d}{${cmv}timeSlider:${d}((${omv}songPercentagePlayed*${omv}timeSliderLength/100)):${d}((${omv}timeSliderLength-(${omv}songPercentagePlayed*${omv}timeSliderLength/100) ))}>${q}
+    if ((${ov}width>${ov}height)) ; then
+      echo -n ${q}<${q}
+      printf -v ${omv}line ${q}%${d}(( ${omv}sliderPositionPercentage*${omv}sliderLength/100 ))s${q} ${q}${q}
+      echo -en ${q}${d}{${omv}line// /${d}{${omv}h}}${q}
+  
+      echo -n ${q}${d}(printf '%02d%%' ${q}${d}{${omv}sliderPositionPercentage#0}${q})${q}
+  
+      printf -v ${omv}line ${q}%${d}(( ${omv}sliderLength-(${omv}sliderPositionPercentage*${omv}sliderLength/100) ))s${q} ${q}${q}
+      echo -en ${q}${d}{${omv}line// /${d}{${omv}h}}${q}
+      echo -n ${q}>${q}
+    else
+      echo -en ${q}${d}{${omv}t}\\\\e[D\\\\e[D\\\\e[B${q}
+      printf -v ${omv}line ${q}%${d}(( ${omv}sliderPositionPercentage*${omv}sliderLength/100 ))s${q} ${q}${q}
+      echo -en ${q}${d}{${omv}line// /${d}{${omv}v}\\\\e[D\\\\e[D\\\\e[B}${q}
+  
+      echo -en ${q}${d}{${omv}b}\\\\e[D\\\\e[D\\\\e[B${q}
+      if [[ ${q}${d}{${omv}sliderPositionPercentage#0}${q} = 100 ]] ; then
+        echo -en ${q}^^\\\\e[D\\\\e[D\\\\e[B${q}
+      else
+        echo -en ${q}${d}(printf '%02d' ${q}${d}{${omv}sliderPositionPercentage#0}${q})\\\\e[D\\\\e[D\\\\e[B${q}
+      fi
+      echo -en ${q}${d}{${omv}t}\\\\e[D\\\\e[D\\\\e[B${q}
+  
+      printf -v ${omv}line ${q}%${d}(( ${omv}sliderLength-(${omv}sliderPositionPercentage*${omv}sliderLength/100) ))s${q} ${q}${q}
+      echo -en ${q}${d}{${omv}line// /${d}{${omv}v}\\\\e[D\\\\e[D\\\\e[B}${q}
+      echo -en ${q}${d}{${omv}b}${q}
+    fi
   "
 }
 EOF
@@ -1639,11 +1682,109 @@ buildSlider {
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
-    printf -v ${ov}timeSlider %${d}((${ov}width-2))s ${q}${q}
-    ${ov}timeSliderErase=${q}${d}{${ov}timeSlider// /\\\\b}\\b\\b${q}
-    ${ov}timeSliderFocused=${q}${d}{${ov}timeSlider// /\\~}${q}
-    ${ov}timeSlider=${q}${d}{${ov}timeSlider// /-}${q}
-    ${ov}timeSliderLength=${q}${d}{#${ov}timeSlider}${q}
+    typeset ${omv}h ${omv}v  ${omv}tl_br ${omv}tr_bl
+
+    ${omv}h='-'
+    ${omv}v='|'
+    ${omv}tl_br='/'
+    ${omv}tr_bl='\'
+
+    if ((${ov}width>${ov}height)) ; then
+      printf -v ${ov}sliderFilled %${d}((${ov}width-2))s ${q}${q}
+      ${ov}sliderLength=${d}{#${ov}sliderFilled}
+
+      ${ov}sliderErase=${q}${d}{${ov}sliderFilled// /\\\\b}\\b\\b${q}
+      ${ov}sliderFocused=${q}${d}{${ov}sliderFilled// /\\~}${q}
+      ${ov}sliderFilled=${q}${d}{${ov}sliderFilled// /-}${q}
+    else
+      printf -v ${ov}sliderFilled %${d}((${ov}height-2))s ${q}${q}
+      ${ov}sliderLength=${d}{#${ov}sliderFilled}
+
+      ${ov}sliderErase=${q}${d}{${ov}sliderFilled// /\\\\e[B\\\\e[D\\\\b}${q}
+      ${ov}sliderFocused=${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}
+      ${ov}sliderFilled=${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}
+    fi
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[cf]
+}
+#[cf]
+#[of]:dynamic methods
+function slideBar.constructor {
+#[of]:set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+#[of]:  setWidth
+m=setWidth
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  ${ov}width=${q}${d}1${q}
+  ${o}.buildSlider
+}"
+#[cf]
+#[of]:  setHeight
+m=setHeight
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  ${ov}height=${q}${d}1${q}
+  ${o}.buildSlider
+}"
+#[cf]
+#[of]:  public settable object data
+  newPublicVar positionUpdater
+#[cf]
+  eval "
+#[of]:    object data
+newvar ${ov}sliderFilled ${ov}sliderErase ${ov}sliderFocused ${ov}sliderLength
+
+${ov}width=${q}${d}{1:-20}${q}
+${ov}height=${q}${d}{2:-1}${q}
+#[cf]
+    ${o}.buildSlider
+  "
+}
+#[cf]
+#[cf]
+#[of]:progressSlider
+#[of]:class meta
+progressSlider_cm_baseClass=slideBar
+#[cf]
+#[of]:static methods
+function progressSlider.staticconstructor {
+  typeset ${omv}method
+#[of]:  refresh {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+refresh {
+#[c]object
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}songLength ${omv}songTimePlayed ${omv}sliderPositionPercentage
+
+    ${omv}songLength=${d}(echo '{ ${q}command${q}: [${q}get_property${q}, ${q}duration${q}] }' | socat - /tmp/mpvsocket 2>/dev/null | grep -oP '${q}data${q}:\\K[^,]+')
+    ${omv}songTimePlayed=${d}(echo '{ ${q}command${q}: [${q}get_property${q}, ${q}playback-time${q}] }' | socat - /tmp/mpvsocket 2>/dev/null | grep -oP '${q}data${q}:\\K[^,]+')
+
+    [[ -z ${q}${d}{${omv}songLength}${q} || -z ${q}${d}{${omv}songTimePlayed##*[^[:digit:].]*}${q} ]] && {
+      ${omv}sliderPositionPercentage=0
+      ${d}{${cm}baseClass}.${m} ${o} ${q}${d}@${q}
+      return
+    }
+
+    ${omv}songLength=${q}${d}{${omv}songLength//./}${q}
+    ${omv}songLength=${q}${d}{${omv}songLength:0:-3}${q}
+    ${omv}songTimePlayed=${q}${d}{${omv}songTimePlayed//./}${q}
+    ${omv}songTimePlayed=${q}${d}{${omv}songTimePlayed:0:-3}${q}
+    ${omv}sliderPositionPercentage=${d}((10#${d}{${omv}songTimePlayed}*100/10#${d}{${omv}songLength}))
+
+    ${omv}sliderPositionPercentage=${q}${d}{${omv}sliderPositionPercentage%%.*}${q}
+    [[ -z ${q}${d}{${omv}sliderPositionPercentage}${q} ]] && ${omv}sliderPositionPercentage=0
+
+    ${d}{${cm}baseClass}.${m} ${o} ${q}${d}@${q}
   "
 }
 EOF
@@ -1657,32 +1798,31 @@ function progressSlider.constructor {
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
-#[of]:  setWidth
-m=setWidth
-omv=${o}_mv_${m}_
-eval "function ${o}.${m} {
-  ${ov}width=${q}${d}1${q}
-  ${o}.buildSlider
-}"
-#[cf]
   eval "
 #[of]:    object data
-newvar ${ov}timeSlider ${ov}timeSliderErase ${ov}timeSliderFocused ${ov}timeSliderLength
 
-${ov}width=${q}${d}{1:-82}${q}
-${ov}height=1
 #[cf]
-    ${o}.buildSlider
   "
 }
 #[cf]
 #[cf]
-#[of]:fileBrowser
+#[of]:listBox
+#[of]:description
+#[c]if this class is being used as a regular (not a base or a sub) class then the list
+#[c]  must be updated with a list updater method in the main program
+#[c]
+#[c]{objectname}.setListUpdater fillmylist
+#[c]function fillmylist {
+#[c]  local -n myentryList="$1"
+#[c]  myentryList=( yes "sample 1" "sample 2" "sample 3" "sample 4" )
+#[c]}
+
+#[cf]
 #[of]:class meta
-fileBrowser_cm_extends=screenObject
+listBox_cm_baseClass=screenObject
 #[cf]
 #[of]:static methods
-function fileBrowser.staticconstructor {
+function listBox.staticconstructor {
   typeset ${omv}method
 #[of]:  refresh {
 IFS='' read -r -d '' ${omv}method <<'EOF'
@@ -1699,22 +1839,20 @@ refresh {
       ${ov}topOffset=${q}${d}{2}${q}
     }
 
-    [[ -z ${q}${d}{${ov}pwd}${q} ]] && ${o}.setPwd
-
     ${o}.runEventAction refresh
 
-    for ((${omv}index=${ov}fileListIndexOffset;${omv}index<${ov}height+${ov}fileListIndexOffset;${omv}index++)) ; do
+    for ((${omv}index=${ov}entryListIndexOffset;${omv}index<${ov}height+${ov}entryListIndexOffset;${omv}index++)) ; do
 #[of]:      erase line
-      ${o}.setcursorxy 0 ${d}((${omv}index-${ov}fileListIndexOffset))
+      ${o}.setcursorxy 0 ${d}((${omv}index-${ov}entryListIndexOffset))
       printf ${q}%${d}((${ov}width))s${q} ${q}${q}
 #[cf]
 #[of]:      print line
       if [[ -n ${q}${d}{${ov}indexLookupTable[${d}{${omv}index}]}${q} ]] ; then
-        ${o}.setcursorxy 0 ${d}((${omv}index-${ov}fileListIndexOffset))
+        ${o}.setcursorxy 0 ${d}((${omv}index-${ov}entryListIndexOffset))
   
-        ((${ov}selectedFile==${d}{${ov}indexLookupTable[${d}{${omv}index}]})) && ${o}.styleSetReverse
-        echo -n ${q} ${d}{${ov}fileListTrimmed[${d}{${ov}indexLookupTable[${d}{${omv}index}]}]}${q}
-        ((${ov}selectedFile==${d}{${ov}indexLookupTable[${d}{${omv}index}]})) && ${o}.styleSetNormal
+        ((${ov}selectedEntry==${d}{${ov}indexLookupTable[${d}{${omv}index}]})) && ${o}.styleSetReverse
+        echo -n ${q} ${d}{${ov}entryListTrimmed[${d}{${ov}indexLookupTable[${d}{${omv}index}]}]}${q}
+        ((${ov}selectedEntry==${d}{${ov}indexLookupTable[${d}{${omv}index}]})) && ${o}.styleSetNormal
       fi
 #[cf]
     done
@@ -1723,40 +1861,44 @@ refresh {
 EOF
 eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  updateFileList {
+#[of]:  updateList {
 IFS='' read -r -d '' ${omv}method <<'EOF'
-updateFileList {
+updateList {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
-    typeset ${omv}IFS ${omv}entry
+    typeset ${omv}entry
 
-    ${omv}IFS=${q}${d}{IFS}${q}
-    IFS=${d}'\\n'
-    ${ov}fileList=( ${d}( cd ${q}${d}{${ov}pwd}${q};{ find . -maxdepth 1 -type d | sort;find . -maxdepth 1 -type f | sort; } | grep -oP '^\\./\\K.*') )
-    IFS=${q}${d}{${omv}IFS}${q}
+    ## fill list only if not a direct sub-class call
+    [ ${q}${c}${q} != ${q}${smc}${q} ] && {
+      if isset ${ov}listUpdater && isfnset ${q}${d}{${ov}listUpdater}${q} ; then
+        ${d}{${ov}listUpdater} ${q}${ov}entryList${q}
+      else
+        ${ov}entryList=( ${q}need to set a ListUpdater method${q} ${q}sample 1${q} ${q}sample 2${q} ${q}sample 3${q} ${q}sample 4${q} )
+      fi
+    }
 
-    unset ${ov}fileListTrimmed
-    for ${omv}entry in ${q}${d}{${ov}fileList[@]}${q} ; do
+    unset ${ov}entryListTrimmed
+    for ${omv}entry in ${q}${d}{${ov}entryList[@]}${q} ; do
       screen.trimString ${omv}entry ${d}((${ov}width-2)) ${q}${d}{${omv}entry}${q}
-      apush ${ov}fileListTrimmed ${q}${d}{${omv}entry}${q}
+      apush ${ov}entryListTrimmed ${q}${d}{${omv}entry}${q}
     done
 
-    ((${d}{#${ov}fileList[@]}>0)) && eval ${q}${ov}indexLookupTable=( {0..${d}((${d}{#${ov}fileList[@]}-1))} )${q}
+    ((${d}{#${ov}entryList[@]}>0)) && eval ${q}${ov}indexLookupTable=( {0..${d}((${d}{#${ov}entryList[@]}-1))} )${q}
     ${ov}indexLookupTableReversed=( ${q}${d}{${ov}indexLookupTable[@]}${q} )
 
-    ${ov}fileListIndexOffset=0
-    ${ov}selectedFile=0
+    ${ov}entryListIndexOffset=0
+    ${ov}selectedEntry=0
   "
 }
 EOF
 eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  selectFile {
+#[of]:  selectListEntry {
 IFS='' read -r -d '' ${omv}method <<'EOF'
-selectFile {
+selectListEntry {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
@@ -1765,31 +1907,31 @@ selectFile {
     typeset ${omv}index
 
     if isnum ${q}${d}{1}${q} ; then
-      if [[ -n ${q}${d}{${ov}indexLookupTable[${d}((${ov}fileListIndexOffset+${d}{1}))]}${q} ]] ; then
-        ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}((${ov}fileListIndexOffset+${d}{1}))]}
+      if [[ -n ${q}${d}{${ov}indexLookupTable[${d}((${ov}entryListIndexOffset+${d}{1}))]}${q} ]] ; then
+        ${ov}selectedEntry=${d}{${ov}indexLookupTable[${d}((${ov}entryListIndexOffset+${d}{1}))]}
       else
         return 1
       fi
     elif [[ -n ${q}${d}{1}${q} ]] ; then
-      for ${omv}index in ${q}${d}{!${ov}fileList[@]}${q} ; do
-        [[ ${q}${d}{${ov}fileList[${d}{${omv}index}]}${q} = ${q}${d}{1}${q} ]] && {
-          ${ov}selectedFile=${d}{${omv}index}
+      for ${omv}index in ${q}${d}{!${ov}entryList[@]}${q} ; do
+        [[ ${q}${d}{${ov}entryList[${d}{${omv}index}]}${q} = ${q}${d}{1}${q} ]] && {
+          ${ov}selectedEntry=${d}{${omv}index}
           break
         }
       done
-      for ((${ov}fileListIndexOffset=0;${ov}fileListIndexOffset<${ov}indexLookupTableReversed[${d}{${ov}selectedFile}]-${ov}height;${ov}fileListIndexOffset+=${ov}height)) ; do :;done
+      for ((${ov}entryListIndexOffset=0;${ov}entryListIndexOffset<${ov}indexLookupTableReversed[${d}{${ov}selectedEntry}]-${ov}height;${ov}entryListIndexOffset+=${ov}height)) ; do :;done
     fi
 
-    [[ ${q}${d}{${ov}fileList[${d}{${ov}selectedFile}]}${q} = ${q}..${q} ]] && {
+    [[ ${q}${d}{${ov}entryList[${d}{${ov}selectedEntry}]}${q} = ${q}..${q} ]] && {
       ${o}.refresh
       ${ov}pwd=${d}(cd ${q}${d}{${ov}pwd}${q};cd ..;pwd)
-      ${o}.updateFileList
+      ${o}.updateList
       return 1
     }
-    [[ -d ${q}${d}{${ov}pwd}/${d}{${ov}fileList[${d}{${ov}selectedFile}]}${q} ]] && {
+    [[ -d ${q}${d}{${ov}pwd}/${d}{${ov}entryList[${d}{${ov}selectedEntry}]}${q} ]] && {
       ${o}.refresh
-      ${ov}pwd=${d}(cd ${q}${d}{${ov}pwd}/${d}{${ov}fileList[${d}{${ov}selectedFile}]}${q};pwd)
-      ${o}.updateFileList
+      ${ov}pwd=${d}(cd ${q}${d}{${ov}pwd}/${d}{${ov}entryList[${d}{${ov}selectedEntry}]}${q};pwd)
+      ${o}.updateList
       return 1
     }
     
@@ -1799,64 +1941,204 @@ selectFile {
 EOF
 eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  incSelectedFile {
+#[of]:  incSelectedListEntry {
 IFS='' read -r -d '' ${omv}method <<'EOF'
-incSelectedFile {
+incSelectedListEntry {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
-    if ((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedFile}]}>=${d}{#${ov}fileList[@]}-1)) ; then
-      ${ov}selectedFile=${d}{${ov}indexLookupTable[0]}
-      ${ov}fileListIndexOffset=0
+    if ((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedEntry}]}>=${d}{#${ov}entryList[@]}-1)) ; then
+      ${ov}selectedEntry=${d}{${ov}indexLookupTable[0]}
+      ${ov}entryListIndexOffset=0
     else
-      ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedFile}]}+1))]}
+      ${ov}selectedEntry=${d}{${ov}indexLookupTable[${d}((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedEntry}]}+1))]}
     fi
 
-    ((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedFile}]}-${ov}fileListIndexOffset>${ov}height-1)) && ${o}.pageDown
+    ((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedEntry}]}-${ov}entryListIndexOffset>${ov}height-1)) && ${o}.pageDown
   "
 }
 EOF
 eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  decSelectedFile {
+#[of]:  decSelectedListEntry {
 IFS='' read -r -d '' ${omv}method <<'EOF'
-decSelectedFile {
+decSelectedListEntry {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
-    if ((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedFile}]}==0)) ; then
-      ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}((${d}{#${ov}fileList[@]}-1))]}
-      for ((${ov}fileListIndexOffset=0;${ov}fileListIndexOffset<${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedFile}]}-${ov}height-1;${ov}fileListIndexOffset=${ov}fileListIndexOffset+${ov}height)) do :; done
+    if ((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedEntry}]}==0)) ; then
+      ${ov}selectedEntry=${d}{${ov}indexLookupTable[${d}((${d}{#${ov}entryList[@]}-1))]}
+      for ((${ov}entryListIndexOffset=0;${ov}entryListIndexOffset<${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedEntry}]}-${ov}height-1;${ov}entryListIndexOffset=${ov}entryListIndexOffset+${ov}height)) do :; done
     else
-      ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedFile}]}-1))]}
+      ${ov}selectedEntry=${d}{${ov}indexLookupTable[${d}((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedEntry}]}-1))]}
     fi
 
-    ((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedFile}]}<${ov}fileListIndexOffset)) && {
+    ((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedEntry}]}<${ov}entryListIndexOffset)) && {
       ${o}.pageUp
-      ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}((${ov}fileListIndexOffset+${ov}height-1))]}
+      ${ov}selectedEntry=${d}{${ov}indexLookupTable[${d}((${ov}entryListIndexOffset+${ov}height-1))]}
     }
   "
 }
 EOF
 eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  getSelectedFile {
+#[of]:  getSelectedListEntry {
 IFS='' read -r -d '' ${omv}method <<'EOF'
-getSelectedFile {
+getSelectedListEntry {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
     if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
-      echo ${q}${d}{${ov}fileList[${d}{${ov}selectedFile}]}${q}
+      echo ${q}${d}{${ov}entryList[${d}{${ov}selectedEntry}]}${q}
     else
-      eval ${d}1=\\${q}\\${d}{${ov}fileList[\\${d}{${ov}selectedFile}]}\\${q}
+      eval ${d}1=\\${q}\\${d}{${ov}entryList[\\${d}{${ov}selectedEntry}]}\\${q}
     fi
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[cf]
+#[of]:  getPagePercentage {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+getPagePercentage {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}percentage
+    if (( ${ov}entryListIndexOffset+${ov}height>${d}{#${ov}entryList[@]} )) ; then
+      ${omv}percentage=100
+    else
+      ${omv}percentage=${d}(( 100*${ov}entryListIndexOffset/${d}{#${ov}entryList[@]} ))
+    fi
+#[c]    echo ${d}{${ov}entryListIndexOffset} ${d}{#${ov}entryList[@]} ${d}{${ov}height}
+
+    if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+      echo ${d}{${omv}percentage}
+    else
+      eval ${q}${d}1=\\${d}{${omv}percentage}${q}
+    fi
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[c]
+#[c]((${ov}entryListIndexOffset<${d}{#${ov}entryList[@]}-${ov}height))
+#[c]
+#[c]$((100*(${ov}entryListIndexOffset+${ov}height)/${d}{#${ov}entryList[@]}))
+#[c]${ov}entryList
+#[c]${ov}height
+#[c]
+#[cf]
+}
+#[cf]
+#[of]:dynamic methods
+function listBox.constructor {
+#[of]:set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+#[of]:  listLookupShuffle
+m=listLookupShuffle
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  ((${d}{#${ov}entryList[@]}>0)) && ${ov}indexLookupTable=( ${d}(eval ${q}shuf -e {0..${d}((${d}{#${ov}entryList[@]}-1))}${q}) )
+
+  unset ${ov}indexLookupTableReversed
+  for _i in ${q}${d}{${ov}indexLookupTable[@]}${q};do ${ov}indexLookupTableReversed[${d}{_i}]=${d}{#${ov}indexLookupTableReversed[@]};done
+  
+  ${ov}entryListIndexOffset=0
+  ${ov}selectedEntry=${d}{${ov}indexLookupTable[${d}{${ov}entryListIndexOffset}]}
+}"
+#[cf]
+#[of]:  listLookupReset
+m=listLookupReset
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  ((${d}{#${ov}entryList[@]}>0)) && eval ${q}${ov}indexLookupTable=( {0..${d}((${d}{#${ov}entryList[@]}-1))} )${q}
+  ${ov}indexLookupTableReversed=( ${q}${d}{${ov}indexLookupTable[@]}${q} )
+
+  ${ov}entryListIndexOffset=0
+  ${ov}selectedEntry=${d}{${ov}indexLookupTable[${d}{${ov}entryListIndexOffset}]}
+}"
+#[cf]
+#[of]:  pageUp
+m=pageUp
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  ((${ov}entryListIndexOffset>0)) && ((${ov}entryListIndexOffset=${ov}entryListIndexOffset-${ov}height))
+  ((${ov}entryListIndexOffset<0)) && ${ov}entryListIndexOffset=0
+  ${ov}selectedEntry=${d}{${ov}indexLookupTable[${d}{${ov}entryListIndexOffset}]}
+}"
+#[cf]
+#[of]:  pageDown
+m=pageDown
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  ((${ov}entryListIndexOffset<${d}{#${ov}entryList[@]}-${ov}height)) && ((${ov}entryListIndexOffset=${ov}entryListIndexOffset+${ov}height))
+  ${ov}selectedEntry=${d}{${ov}indexLookupTable[${d}{${ov}entryListIndexOffset}]}
+}"
+#[cf]
+#[of]:  public settable object data
+  newPublicVar listUpdater
+#[cf]
+  eval "
+#[of]:    object data
+newvar ${ov}entryList ${ov}entryListTrimmed ${ov}entryListIndexOffset ${ov}indexLookupTable
+newvar ${ov}selectedEntry
+#[cf]
+#[c]    ${o}.updateList
+  "
+}
+#[cf]
+#[cf]
+#[of]:fileBrowser
+#[of]:class meta
+fileBrowser_cm_baseClass=listBox
+#[cf]
+#[of]:static methods
+function fileBrowser.staticconstructor {
+  typeset ${omv}method
+#[of]:  refresh {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+refresh {
+#[c]object
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    [[ -z ${q}${d}{${ov}pwd}${q} ]] && ${o}.setPwd
+
+    ${d}{${cm}baseClass}.${m} ${o} ${q}${d}@${q}
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[cf]
+#[of]:  updateList {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+updateList {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}IFS
+
+    ${omv}IFS=${q}${d}{IFS}${q}
+    IFS=${d}'\\n'
+    ${ov}entryList=( ${d}( cd ${q}${d}{${ov}pwd}${q};{ find . -maxdepth 1 -type d | sort;find . -maxdepth 1 -type f | sort; } | grep -oP '^\\./\\K.*') )
+    IFS=${q}${d}{${omv}IFS}${q}
+
+    ${d}{${cm}baseClass}.${m} ${o} ${q}${d}@${q}
   "
 }
 EOF
@@ -1875,7 +2157,7 @@ setPwd {
     ${omv}newPwd=${q}${d}{1}${q}
     [[ ${d}{#${omv}newPwd} -gt 1 ]] && ${omv}newPwd=${q}${d}{${omv}newPwd%/}${q}
   
-    [[ -z ${q}${d}{${omv}newPwd}${q} ]] && ${omv}newPwd=${d}(pwd)
+    [[ -z ${q}${d}{${omv}newPwd}${q} ]] && ${omv}newPwd=${q}${d}(pwd)${q}
     
     [[ ${q}${d}{${ov}pwd}${q} != ${q}${d}{${omv}newPwd}${q} ]] && {
       if [[ -d ${q}${d}{${omv}newPwd}${q} ]] ; then
@@ -1883,7 +2165,7 @@ setPwd {
       else
         ${ov}pwd=${d}(pwd)
       fi
-      ${o}.updateFileList
+      ${o}.updateList
     }
   "
 }
@@ -1898,72 +2180,15 @@ function fileBrowser.constructor {
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
-#[of]:  fileListLookupShuffle
-m=fileListLookupShuffle
-omv=${o}_mv_${m}_
-eval "function ${o}.${m} {
-  ((${d}{#${ov}fileList[@]}>0)) && ${ov}indexLookupTable=( ${d}(eval ${q}shuf -e {0..${d}((${d}{#${ov}fileList[@]}-1))}${q}) )
-
-  unset ${ov}indexLookupTableReversed
-  for _i in ${q}${d}{${ov}indexLookupTable[@]}${q};do ${ov}indexLookupTableReversed[${d}{_i}]=${d}{#${ov}indexLookupTableReversed[@]};done
-  
-  ${ov}fileListIndexOffset=0
-  ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}{${ov}fileListIndexOffset}]}
-}"
-#[cf]
-#[of]:  fileListLookupReset
-m=fileListLookupReset
-omv=${o}_mv_${m}_
-eval "function ${o}.${m} {
-  ((${d}{#${ov}fileList[@]}>0)) && eval ${q}${ov}indexLookupTable=( {0..${d}((${d}{#${ov}fileList[@]}-1))} )${q}
-  ${ov}indexLookupTableReversed=( ${q}${d}{${ov}indexLookupTable[@]}${q} )
-
-  ${ov}fileListIndexOffset=0
-  ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}{${ov}fileListIndexOffset}]}
-}"
-#[cf]
-#[of]:  incFileListIndexOffset
-m=incFileListIndexOffset
-omv=${o}_mv_${m}_
-eval "function ${o}.${m} {
-  ((${ov}fileListIndexOffset<${d}{#${ov}fileList[@]}-${ov}height)) && ((${ov}fileListIndexOffset++))
-}"
-#[cf]
-#[of]:  decFileListIndexOffset
-m=decFileListIndexOffset
-omv=${o}_mv_${m}_
-eval "function ${o}.${m} {
-  ((${ov}fileListIndexOffset>0)) && ((${ov}fileListIndexOffset--))
-}"
-#[cf]
-#[of]:  pageUp
-m=pageUp
-omv=${o}_mv_${m}_
-eval "function ${o}.${m} {
-  ((${ov}fileListIndexOffset>0)) && ((${ov}fileListIndexOffset=${ov}fileListIndexOffset-${ov}height))
-  ((${ov}fileListIndexOffset<0)) && ${ov}fileListIndexOffset=0
-  ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}{${ov}fileListIndexOffset}]}
-}"
-#[cf]
-#[of]:  pageDown
-m=pageDown
-omv=${o}_mv_${m}_
-eval "function ${o}.${m} {
-  ((${ov}fileListIndexOffset<${d}{#${ov}fileList[@]}-${ov}height)) && ((${ov}fileListIndexOffset=${ov}fileListIndexOffset+${ov}height))
-  ${ov}selectedFile=${d}{${ov}indexLookupTable[${d}{${ov}fileListIndexOffset}]}
-}"
-#[cf]
 #[of]:  public settable object data
   newPublicVar pwd
 #[cf]
   eval "
 #[of]:    object data
-newvar ${ov}fileList ${ov}fileListTrimmed ${ov}fileListIndexOffset ${ov}indexLookupTable
-newvar ${ov}selectedFile
-
 (($#>2)) && ${o}.setPwd ${q}${d}{3:-${d}(pwd)}${q}
+
 #[cf]
-#[c]    ${o}.updateFileList
+#[c]    ${o}.updateList
   "
 }
 #[cf]
