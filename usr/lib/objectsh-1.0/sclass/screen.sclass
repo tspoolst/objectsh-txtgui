@@ -498,7 +498,7 @@ open {
 
     ${o}.calcScreenSize
     ${o}.focusListBuild
-    ${o}.focusTriggerFocusEvent Enter
+    ${o}.focusTriggerFocusEvent enter
     clear
     ${o}.refresh
     ${c}.mouseEnable -d
