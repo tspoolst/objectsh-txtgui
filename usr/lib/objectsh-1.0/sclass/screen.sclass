@@ -68,6 +68,24 @@ function screenCore.classconstructor {
 #[of]:static methods
 function screenCore.staticconstructor {
   typeset ${omv}method
+#[of]:  bindEventAction
+IFS='' read -r -d '' ${omv}method <<'EOF'
+bindEventAction {
+#[c]object -|var
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset _i
+    for _i in ${q}${d}{@:1:${d}#-1}${q} ; do
+      ${ov}inputEventActions.setkey ${q}${d}{_i}${q} ${q}${d}{@: -1}${q}
+    done
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[cf]
 #[of]:  drawBorder {
 IFS='' read -r -d '' ${omv}method <<'EOF'
 drawBorder {
@@ -122,29 +140,6 @@ drawBorder {
 EOF
 eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  runEventAction {
-IFS='' read -r -d '' ${omv}method <<'EOF'
-runEventAction {
-#[c]object
-#[c]somehow consume ${omv}startx ${omv}starty ${omv}x ${omv}y with callout
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-    typeset ${omv}objectName ${omv}action
-    if ${o}.getEventAction ${omv}objectName ${omv}action ! ! ${q}${d}1${q} ; then
-      trap ${q}echo TRAPed signal${q} INT
-      eval ${q}${d}{${omv}action}${q}
-      trap - INT
-    else
-      return 1
-    fi
-  "
-}
-EOF
-eval "eval \"function \${c}.\${${omv}method}\""
-#[cf]
 }
 #[cf]
 #[of]:dynamic methods
@@ -153,25 +148,11 @@ function screenCore.constructor {
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
-#[of]:  bindEventAction
-m=bindEventAction
+#[of]:  delEventAction
+m=delEventAction
 omv=${o}_mv_${m}_
 eval "function ${o}.${m} {
-  typeset _i
-  for _i in ${q}${d}{@:1:${d}#-1}${q} ; do
-    ${ov}inputEventActions.setkey ${q}${d}{_i}${q} ${q}${d}{@: -1}${q}
-  done
-}"
-#[cf]
-#[of]:  setcursorxy {
-m=setcursorxy
-omv=${o}_mv_${m}_
-eval "function ${o}.${m} {
-  typeset ${omv}x ${omv}y
-  ${omv}x=${d}1
-  ${omv}y=${d}2
-  echo -en ${q}\\\\033[${d}((${ov}topOffset+1+${omv}y));${d}((${ov}leftOffset+1+${omv}x))H${q}
-  return 0
+  ${ov}inputEventActions.delkey ${q}${d}1${q}
 }"
 #[cf]
 #[of]:  getEventAction
@@ -182,18 +163,30 @@ eval "function ${o}.${m} {
   ${ov}inputEventActions.getkey ${q}${d}2${q} ${q}${d}5${q}
 }"
 #[cf]
-#[of]:  delEventAction
-m=delEventAction
+#[of]:  runEventAction {
+m=runEventAction
 omv=${o}_mv_${m}_
 eval "function ${o}.${m} {
-  ${ov}inputEventActions.delkey ${q}${d}1${q}
+  typeset ${omv}objectName ${omv}action o
+  o=${o}
+  if ${o}.getEventAction ${omv}objectName ${omv}action ! ! ${q}${d}1${q} ; then
+    trap ${q}echo TRAPed signal${q} INT
+    eval ${q}${d}{${omv}action}${q}
+    trap - INT
+  else
+    return 1
+  fi
 }"
 #[cf]
-#[of]:  styleSetReverse
-m=styleSetReverse
+#[of]:  setcursorxy
+m=setcursorxy
 omv=${o}_mv_${m}_
 eval "function ${o}.${m} {
-  echo -en ${q}\\033[7m${q}
+  typeset ${omv}x ${omv}y
+  ${omv}x=${d}1
+  ${omv}y=${d}2
+  echo -en ${q}\\\\033[${d}((${ov}topOffset+1+${omv}y));${d}((${ov}leftOffset+1+${omv}x))H${q}
+  return 0
 }"
 #[cf]
 #[of]:  styleSetNormal
@@ -201,6 +194,13 @@ m=styleSetNormal
 omv=${o}_mv_${m}_
 eval "function ${o}.${m} {
   echo -en ${q}\\033[0m${q}
+}"
+#[cf]
+#[of]:  styleSetReverse
+m=styleSetReverse
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  echo -en ${q}\\033[7m${q}
 }"
 #[cf]
 #[of]:  public settable object data
@@ -1435,7 +1435,7 @@ ${o}.setHeight ${q}${d}{2:-0}${q}
 #[cf]
 #[of]:screenObject
 #[of]:description
-#[c]screen object base object
+#[c]screen object base class
 #[cf]
 #[of]:class meta
 screenObject_cm_baseClass=screenCore
@@ -1566,12 +1566,12 @@ ${ov}borderStyle=1
 }
 #[cf]
 #[cf]
-#[of]:slideBar
+#[of]:sliderBar
 #[of]:class meta
-slideBar_cm_baseClass=screenObject
+sliderBar_cm_baseClass=screenObject
 #[cf]
 #[of]:static methods
-function slideBar.staticconstructor {
+function sliderBar.staticconstructor {
   typeset ${omv}method
 #[of]:  refresh {
 IFS='' read -r -d '' ${omv}method <<'EOF'
@@ -1687,7 +1687,7 @@ eval "eval \"function \${c}.\${${omv}method}\""
 }
 #[cf]
 #[of]:dynamic methods
-function slideBar.constructor {
+function sliderBar.constructor {
 #[of]:set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
@@ -1725,7 +1725,7 @@ ${ov}height=${q}${d}{2:-1}${q}
 #[cf]
 #[of]:progressSlider
 #[of]:class meta
-progressSlider_cm_baseClass=slideBar
+progressSlider_cm_baseClass=sliderBar
 #[cf]
 #[of]:static methods
 function progressSlider.staticconstructor {
@@ -1894,7 +1894,7 @@ selectListEntry {
           break
         }
       done
-      for ((${ov}entryListIndexOffset=0;${ov}entryListIndexOffset<${ov}indexLookupTableReversed[${d}{${ov}selectedEntry}]-${ov}height;${ov}entryListIndexOffset+=${ov}height)) ; do :;done
+      for ((${ov}entryListIndexOffset=0;${ov}entryListIndexOffset<${ov}indexLookupTableReversed[${d}{${ov}selectedEntry}]+1-${ov}height;${ov}entryListIndexOffset+=${ov}height)) ; do :;done
     fi
 
     [[ ${q}${d}{${ov}entryList[${d}{${ov}selectedEntry}]}${q} = ${q}..${q} ]] && {
@@ -2074,12 +2074,12 @@ newvar ${ov}selectedEntry
 }
 #[cf]
 #[cf]
-#[of]:fileBrowser
+#[of]:fileBrowserBox
 #[of]:class meta
-fileBrowser_cm_baseClass=listBox
+fileBrowserBox_cm_baseClass=listBox
 #[cf]
 #[of]:static methods
-function fileBrowser.staticconstructor {
+function fileBrowserBox.staticconstructor {
   typeset ${omv}method
 #[of]:  refresh {
 IFS='' read -r -d '' ${omv}method <<'EOF'
@@ -2150,7 +2150,7 @@ eval "eval \"function \${c}.\${${omv}method}\""
 }
 #[cf]
 #[of]:dynamic methods
-function fileBrowser.constructor {
+function fileBrowserBox.constructor {
 #[of]:set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
