@@ -40,6 +40,8 @@
 #[c]
 #[cf]
 #[cf]
+#[c]
+#[c]
 #[of]:screenCore
 #[of]:description
 #[c]screen object base object
@@ -112,26 +114,31 @@ drawBorder {
     esac
 
 #[of]:    draw top border
-    ${o}.setcursorxy 0 0
-    printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tl_br}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tr_bl}${q}
+    ((${ov}width>2)) && {
+      ${o}.setcursorxy 0 0
+      printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tl_br}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tr_bl}${q}
+    }
 #[cf]
-#[of]:    draw left border
-    ${o}.setcursorxy 0 1
-    printf -v ${omv}line ${q}%${d}((${ov}height-3))s${q} ${q}${q};{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
+    ((${ov}height>2)) && {
+#[of]:      draw left border
+      ${o}.setcursorxy 0 1
+      printf -v ${omv}line ${q}%${d}((${ov}height-3))s${q} ${q}${q};{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
 #[cf]
-#[of]:    draw right border
-#[c]    ${o}.setcursorxy ${d}((${ov}width-1)) 1
-#[c]    printf -v ${omv}line ${q}%${d}((${ov}height-3))s${q} ${q}${q};{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
-
-    for ((${omv}index=1;${omv}index<${ov}height-1;${omv}index++)) ; do
-      ${o}.setcursorxy $((${ov}width-1)) ${d}{${omv}index}
-      echo -n ${q}${d}{${omv}v}${q}
-    done
-
+#[of]:      draw right border
+#[c]      ${o}.setcursorxy ${d}((${ov}width-1)) 1
+#[c]      printf -v ${omv}line ${q}%${d}((${ov}height-3))s${q} ${q}${q};{ echo -n ${q}${d}{${omv}v}${q};echo -en ${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}; }
+  
+      for ((${omv}index=1;${omv}index<${ov}height-1;${omv}index++)) ; do
+        ${o}.setcursorxy $((${ov}width-1)) ${d}{${omv}index}
+        echo -n ${q}${d}{${omv}v}${q}
+      done
 #[cf]
+    }
 #[of]:    draw bottom border
-    ${o}.setcursorxy 0 ${d}((${ov}height-1))
-    printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tr_bl}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tl_br}${q}
+    ((${ov}width>2)) && {
+      ${o}.setcursorxy 0 ${d}((${ov}height-1))
+      printf -v ${omv}line ${q}%${d}((${ov}width-2))s${q} ${q}${q};echo -n ${q}${d}{${omv}tr_bl}${d}{${omv}line// /${d}{${omv}h}}${d}{${omv}tl_br}${q}
+    }
 #[cf]
 
     return 0
@@ -147,6 +154,38 @@ function screenCore.constructor {
 #[of]:set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
+#[cf]
+#[of]:  addParent
+m=addParent
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  apush ${ov}screenParents ${q}${d}1${q}
+}"
+#[cf]
+#[of]:  delParent
+m=delParent
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  typeset ${omv}index
+  for ${omv}index in ${q}${d}{!${ov}screenParents[@]}${q} ; do
+    if [[ ${q}${d}{${ov}screenParents[${d}{${omv}index}]}${q} = ${q}${d}1${q} ]] ; then
+      unset ${ov}screenParents[${d}{${omv}index}]
+      ${ov}screenParents=( ${q}${d}{${ov}screenParents[@]}${q} )
+      break
+    fi
+  done
+}"
+#[cf]
+#[of]:  getParent
+m=getParent
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+    echo ${q}${d}{${ov}screenParents[0]}${q}
+  else
+    eval ${d}1=\\${q}\\${d}{${ov}screenParents[0]}\\${q}
+  fi
+}"
 #[cf]
 #[of]:  delEventAction
 m=delEventAction
@@ -209,6 +248,7 @@ eval "function ${o}.${m} {
   eval "
 #[of]:    object data
 newvar ${ov}leftOffset ${ov}topOffset
+newvar ${ov}screenParents
 new hash ${ov}inputEventActions
 
 ${ov}leftOffset=0
@@ -218,12 +258,13 @@ ${ov}drawBorder=0
 ${ov}borderStyle=0
 
 ${ov}width=${q}${d}{1:-0}${q}
-${ov}height=${q}${d}{2:-0}${q}
+${ov}height=${q}${d}{2:-1}${q}
 #[cf]
   "
 }
 #[cf]
 #[cf]
+#[c]
 #[of]:screenManage
 #[of]:description
 #[c]screen object base object
@@ -253,6 +294,17 @@ bindObject {
     ${d}{${omv}objectName}.getHeight ${omv}height
     ${d}{${omv}objectName}.getWidth ${omv}width
 
+#[of]:    prevent object from being added twice to the same screen/window
+    for ${omv}objectId in ${q}${d}{!${ov}objectNames[@]}${q} ; do
+      if [[ ${q}${d}{${omv}objectName}${q} = ${q}${d}{${ov}objectNames[${d}{${omv}objectId}]}${q} ]] ; then
+        return 0
+        break
+      fi
+    done
+#[cf]
+
+    ${d}{${omv}objectName}.addParent ${o}
+
     ${ov}objectIdPool.getid ${omv}objectId
 
     ${ov}objectNames[${d}{${omv}objectId}]=${q}${d}{${omv}objectName}${q}
@@ -266,6 +318,9 @@ bindObject {
 }
 EOF
 eval "eval \"function \${c}.\${${omv}method}\""
+#[c]
+#[c]
+#[c]
 #[cf]
 #[of]:  resizeObject {
 IFS='' read -r -d '' ${omv}method <<'EOF'
@@ -318,6 +373,7 @@ delObject {
       if [[ ${q}${d}{${omv}objectName}${q} = ${q}${d}{${ov}objectNames[${d}{${omv}objectId}]}${q} ]] ; then
         unset ${ov}objectNames[${d}{${omv}objectId}]
         ${ov}objectIdPool.delid ${d}{${omv}objectId}
+        ${d}{${omv}objectName}.delParent ${o}
         break
       fi
     done
@@ -398,7 +454,6 @@ function screenManage.constructor {
 #[cf]
   eval "
 #[of]:    object data
-
 #[cf]
   "
 }
@@ -447,6 +502,7 @@ function ${c}.mouseDisable {
 #[cf]
 #[of]:    function ${c}.stringLength {
 function ${c}.stringLength {
+## prints only the length of the longest line in a file
   if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
     echo ${d}(wc -L <<< ${q}${d}2${q})
   else
@@ -491,6 +547,7 @@ open {
     typeset ${omv}mouseXStart ${omv}mouseYStart ${omv}mouseX ${omv}mouseY
     typeset ${omv}currentRelX ${omv}currentRelY ${omv}relX ${omv}relY
     typeset ${omv}mouseButtonState ${omv}shift ${omv}alt ${omv}ctrl
+    typeset ${omv}objectNamesKeys
     typeset ${omv}objectName ${omv}objectId
     typeset ${omv}triggerId
 
@@ -519,6 +576,7 @@ open {
         done
 
         ((${ov}refreshInterval>0)) && ((${ov}tick%${ov}refreshInterval==0)) && ${o}.refresh
+        continue
       }
       case ${q}${d}{${omv}key}${q} in
 #[of]:        escaped keys
@@ -542,6 +600,7 @@ open {
           case ${q}${d}{${omv}key}${q} in
 #[of]:            mouse
             '[<')
+#[of]:              read mouse input strings from terminal
               ${omv}mouseButtonId=${q}${q}
               while read -s -N 1 -r ${omv}key ; do
                 [[ ${q}${d}{${omv}key}${q} == ${q};${q} ]] && break
@@ -560,9 +619,11 @@ open {
               [[ ${q}${d}{${omv}key}${q} == ${q}M${q} ]] && ${omv}mouseButtonState=${q}Down${q} || ${omv}mouseButtonState=${q}Up${q}
               ((${omv}mouseX--))
               ((${omv}mouseY--))
+#[cf]
+#[of]:              decode mouse input into event tags
 
-#[c]left middle right scroll_Up scroll_Down
-#[c]shift alt ctrl
+#[c]              left middle right scroll_Up scroll_Down
+#[c]              shift alt ctrl
 
               (( (${omv}mouseButtonId & 4 )==4  )) && ${omv}shift=${q}Shift${q} || ${omv}shift=${q}${q}
               (( (${omv}mouseButtonId & 8 )==8  )) && ${omv}alt=${q}Alt${q}     || ${omv}alt=${q}${q}
@@ -592,6 +653,7 @@ open {
                     ;;
               esac
               aunshift ${omv}mouseEvents ${q}mouse${d}{${omv}mouseButtonName}${d}{${omv}mouseButtonState}${d}{${omv}shift}${d}{${omv}alt}${d}{${omv}ctrl}${q}
+#[cf]
 
 #[c]              object on screen has TOPxLEFT and WIDTHxHEIGHT
 #[c]                button Down event
@@ -610,27 +672,35 @@ open {
 #[c]                fi
 #[c]              done
 
+#[of]:              find object under current mouse position
               ${omv}relX=${d}{${omv}mouseX}
               ${omv}relY=${d}{${omv}mouseY}
               ${omv}objectName=${q}${q}
-              for ${omv}objectId in ${q}${d}{!${ov}objectNames[@]}${q} ; do
+
+              ## this gets the keys from ${ov}objectNames and then loops through them in reverse
+              ${omv}objectNamesKeys=( ${d}{!${ov}objectNames[@]} )
+              for ((i=${d}{#${omv}objectNamesKeys[@]}-1;i>=0;i--));do
+                ${omv}objectId=${q}${d}{${omv}objectNamesKeys[${d}{i}]}${q}
                 if  (( ${ov}objectPositions[4*${omv}objectId+0] <= ${omv}mouseX &&
                     ${omv}mouseX <= ${ov}objectPositions[${d}((4*${omv}objectId+1))] &&
                    ${ov}objectPositions[4*${omv}objectId+2] <= ${omv}mouseY &&
                    ${omv}mouseY <= ${ov}objectPositions[4*${omv}objectId+3] ))
                 then
                   ${omv}objectName=${q}${d}{${ov}objectNames[${d}{${omv}objectId}]}${q}
+#[of]:                  calculate relative position for found object
                   ${omv}relX=${d}(( ${omv}mouseX - ${ov}objectPositions[4*${omv}objectId+0] ))
                   ${omv}relY=${d}(( ${omv}mouseY - ${ov}objectPositions[4*${omv}objectId+2] ))
-#[c]                  echo ${q}${d}{${omv}objectName} ${d}{${ov}objectPositions[4*${omv}objectId+0]} ${d}{${ov}objectPositions[4*${omv}objectId+1]} ${d}{${ov}objectPositions[4*${omv}objectId+2]} ${d}{${ov}objectPositions[4*${omv}objectId+3]}${q}
+#[cf]
                   break
                 fi
               done
+#[cf]
 
 #[c]###write some code that disables event actions and just shows mouse events
 #[c]###be sure the code shows screen object calls as well
               ((gl_debug>0)) && echo ${q}s - ${d}{!${ov}objectPositions[@]} | ${d}{${ov}objectPositions[@]} -- ${d}{${omv}objectName:-${o}} ${d}{${omv}mouseEvent} ${d}{${omv}relX} ${d}{${omv}relY} ${d}{${omv}mouseX} ${d}{${omv}mouseY}${q}
 
+#[of]:              process mouse event queue list
               while ashift ${omv}mouseEvent ${omv}mouseEvents ; do
                 ${o}.processEvent \
                   ${q}${d}{${omv}objectName:-${o}}${q} \
@@ -638,6 +708,7 @@ open {
                   ${q}${d}{${omv}relX}${q} ${q}${d}{${omv}relY}${q} \
                   ${q}${d}{${omv}mouseX}${q} ${q}${d}{${omv}mouseY}${q}
               done
+#[cf]
               ;;
 #[cf]
 #[of]:            shift up)
@@ -768,6 +839,11 @@ open {
 #[cf]
 #[of]:        *)
         *)
+          [[ -n ${q}${d}{${omv}key##*[^[:cntrl:]]*}${q} ]] && {
+            [[ ${d}(printf %d ${d}(printf %s ${q}${d}{${omv}key}${q} | od -An -t dC)) = 127 ]] && \
+              ${omv}key=backspace
+          }
+
           ${ov}inputEventActions.getkey ! ${q}${d}{${omv}key}${q} && ${omv}objectName=${o} || ${omv}objectName=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
           ${o}.processEvent \
             ${q}${d}{${omv}objectName}${q} \
@@ -781,8 +857,8 @@ open {
     done
 #[cf]
     ${c}.mouseDisable
-
     clear
+    
     return 0
   "
 }
@@ -801,7 +877,7 @@ refresh {
     ((gl_debug>0)) && return
     typeset ${omv}objectId ${omv}left ${omv}top
     
-    clear
+#[c]    clear
 
     ${o}.runEventAction refresh
 
@@ -1335,44 +1411,56 @@ getEventAction {
     ${omv}relX=${q}${d}{6}${q}
     ${omv}relY=${q}${d}{7}${q}
 
+#[of]:    if not mouse event return self
     if [[ -z ${q}${d}{${omv}relX}${q} ]] ; then
       [[ ${q}${d}1${q} != ${q}!${q} ]] && eval ${d}1=\\${q}${o}\\${q}
       ${ov}inputEventActions.getkey ${q}${d}2${q} ${q}${d}{${omv}mouseEvent}${q}
       return
     fi
+#[cf]
 
+#[of]:    find object under current mouse position
     ${omv}mouseX=${d}{${omv}relX}
     ${omv}mouseY=${d}{${omv}relY}
     ${omv}objectName=${q}${q}
-    for ${omv}objectId in ${q}${d}{!${ov}objectNames[@]}${q} ; do
+
+    ## this gets the keys from ${ov}objectNames and then loops through them in reverse
+    ${omv}objectNamesKeys=( ${d}{!${ov}objectNames[@]} )
+    for ((i=${d}{#${omv}objectNamesKeys[@]}-1;i>=0;i--));do
+      ${omv}objectId=${q}${d}{${omv}objectNamesKeys[${d}{i}]}${q}
       if  (( ${ov}objectPositions[4*${omv}objectId+0] <= ${omv}mouseX &&
           ${omv}mouseX <= ${ov}objectPositions[${d}((4*${omv}objectId+1))] &&
          ${ov}objectPositions[4*${omv}objectId+2] <= ${omv}mouseY &&
          ${omv}mouseY <= ${ov}objectPositions[4*${omv}objectId+3] ))
       then
         ${omv}objectName=${q}${d}{${ov}objectNames[${d}{${omv}objectId}]}${q}
-#[c]        echo ${q}---|${d}{${ov}objectNames[@]}|---${q}
+#[of]:        calculate relative position for found object
         ${omv}relX=${d}(( ${omv}mouseX - ${ov}objectPositions[4*${omv}objectId+0] ))
         ${omv}relY=${d}(( ${omv}mouseY - ${ov}objectPositions[4*${omv}objectId+2] ))
-#[c]        echo ${q}${d}{${omv}objectName} ${d}{${ov}objectPositions[4*${omv}objectId+0]} ${d}{${ov}objectPositions[4*${omv}objectId+1]} ${d}{${ov}objectPositions[4*${omv}objectId+2]} ${d}{${ov}objectPositions[4*${omv}objectId+3]}${q}
+#[cf]
         break
       fi
     done
+#[cf]
   
 #[c]    ((gl_debug>0)) && 
 #[c]    echo ${q}w - ${d}{!${ov}objectPositions[@]} | ${d}{${ov}objectPositions[@]} -- ${o}_${d}{${omv}objectName:---} ${d}{${omv}mouseEvent} ${d}{${omv}relX} ${d}{${omv}relY} ${d}{${omv}mouseX} ${d}{${omv}mouseY}${q}
 
     if [[ -n ${q}${d}{${omv}objectName}${q} ]] ; then
+#[of]:      query object under mouse for registered events
 #[c]      echo ${d}{${omv}objectName}.getEventAction ${q}${d}1${q} ${q}${d}2${q} ${omv}currentRelX ${omv}currentRelY ${q}${d}{${omv}mouseEvent}${q} ${d}{${omv}relX} ${d}{${omv}relY} || return 1
       ${d}{${omv}objectName}.getEventAction ${q}${d}1${q} ${q}${d}2${q} ${omv}currentRelX ${omv}currentRelY ${q}${d}{${omv}mouseEvent}${q} ${d}{${omv}relX} ${d}{${omv}relY} || return 1
       [[ ${q}${d}3${q} != ${q}!${q} ]] && eval ${d}3=\\${q}\\${d}{${omv}currentRelX:-\\${d}{${omv}relX}}\\${q}
       [[ ${q}${d}4${q} != ${q}!${q} ]] && eval ${d}4=\\${q}\\${d}{${omv}currentRelY:-\\${d}{${omv}relY}}\\${q}
       return 0
+#[cf]
     else
+#[of]:      return self
       [[ ${q}${d}1${q} != ${q}!${q} ]] && eval ${d}1=\\${q}${o}\\${q}
       ${ov}inputEventActions.getkey ${q}${d}2${q} ${q}${d}{${omv}mouseEvent}${q}
       [[ ${q}${d}3${q} != ${q}!${q} ]] && eval ${d}3=\\${q}\\${d}{${omv}relX}\\${q}
       [[ ${q}${d}4${q} != ${q}!${q} ]] && eval ${d}4=\\${q}\\${d}{${omv}relY}\\${q}
+#[cf]
     fi
   "
 }
@@ -1433,6 +1521,7 @@ ${o}.setHeight ${q}${d}{2:-0}${q}
 }
 #[cf]
 #[cf]
+#[c]
 #[of]:screenObject
 #[of]:description
 #[c]screen object base class
@@ -1457,31 +1546,30 @@ refresh {
       ${ov}leftOffset=${q}${d}{1}${q}
       ${ov}topOffset=${q}${d}{2}${q}
     }
-
     ${o}.runEventAction refresh
+    [[ -z ${q}${d}{${ov}topOffset}${q} ]] && return
+
 
     [[ -n ${q}${d}4${q} ]] && {
       [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${ov}hasFocus=1 || ${ov}hasFocus=0
     }
 
-    ((${ov}height>2)) && {
-      for ((${omv}index=0;${omv}index<${ov}height;${omv}index++)) ; do
-        ${o}.setcursorxy 0 ${d}{${omv}index}
-        printf ${q}%${d}((${ov}width))s${q} ${q}${q}
-      done
+    for ((${omv}index=0;${omv}index<${ov}height;${omv}index++)) ; do
+      ${o}.setcursorxy 0 ${d}{${omv}index}
+      printf ${q}%${d}((${ov}width))s${q} ${q}${q}
+    done
       
+    ((${ov}height>2)) && {
       ((${ov}drawBorder)) && ${o}.drawBorder
     }
 
     ((${ov}hasFocus)) && ${o}.styleSetReverse
     
     screen.stringLength ${omv}length ${q}${d}{${ov}title}${q}
-#[c]    ${o}.setcursorxy 0 ${d}((${ov}height/2))
-#[c]    printf ${q}%${d}((${ov}width))s${q} ${q}${q}
     if ((${ov}txtAlignment)) ; then
-      ${o}.setcursorxy 0 ${d}((${ov}height/2))
+      ${o}.setcursorxy 0 ${d}((${ov}height&1?${ov}height/2:${ov}height/2-1))
     else
-      ${o}.setcursorxy ${d}((${ov}width/2-${d}{${omv}length}/2)) ${d}((${ov}height/2))
+      ${o}.setcursorxy ${d}((${ov}width/2-${d}{${omv}length}/2)) ${d}((${ov}height&1?${ov}height/2:${ov}height/2-1))
     fi
     echo -n ${q}${d}{${ov}title:0:${d}((${ov}width))}${q}
 
@@ -1587,8 +1675,9 @@ refresh {
       ${ov}leftOffset=${q}${d}{1}${q}
       ${ov}topOffset=${q}${d}{2}${q}
     }
-
     ${o}.runEventAction refresh
+    [[ -z ${q}${d}{${ov}topOffset}${q} ]] && return
+
 
     [[ -n ${q}${d}4${q} ]] && {
       [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${ov}hasFocus=1 || ${ov}hasFocus=0
@@ -1604,8 +1693,6 @@ refresh {
     ${omv}t='/\\\\'
     ${omv}b='\\\\/'
     
-    ${omv}sliderLength=${d}((${ov}sliderLength-3))
-
     ## set position only if not a direct sub-class call
     [ ${q}${c}${q} != ${q}${smc}${q} ] && {
       typeset ${omv}sliderPositionPercentage
@@ -1618,6 +1705,8 @@ refresh {
 
     ${o}.setcursorxy 0 0
     if ((${ov}width>${ov}height)) ; then
+      ${omv}sliderLength=${d}((${ov}sliderLength-3))
+
       echo -n ${q}<${q}
       printf -v ${omv}line ${q}%${d}(( ${omv}sliderPositionPercentage*${omv}sliderLength/100 ))s${q} ${q}${q}
       echo -en ${q}${d}{${omv}line// /${d}{${omv}h}}${q}
@@ -1628,17 +1717,19 @@ refresh {
       echo -en ${q}${d}{${omv}line// /${d}{${omv}h}}${q}
       echo -n ${q}>${q}
     else
+      ${omv}sliderLength=${d}((${ov}sliderLength-1))
+
       echo -en ${q}${d}{${omv}t}\\\\e[D\\\\e[D\\\\e[B${q}
       printf -v ${omv}line ${q}%${d}(( ${omv}sliderPositionPercentage*${omv}sliderLength/100 ))s${q} ${q}${q}
       echo -en ${q}${d}{${omv}line// /${d}{${omv}v}\\\\e[D\\\\e[D\\\\e[B}${q}
   
-      echo -en ${q}${d}{${omv}b}\\\\e[D\\\\e[D\\\\e[B${q}
+#[c]      echo -en ${q}${d}{${omv}b}\\\\e[D\\\\e[D\\\\e[B${q}
       if [[ ${q}${d}{${omv}sliderPositionPercentage#0}${q} = 100 ]] ; then
         echo -en ${q}^^\\\\e[D\\\\e[D\\\\e[B${q}
       else
         echo -en ${q}${d}(printf '%02d' ${q}${d}{${omv}sliderPositionPercentage#0}${q})\\\\e[D\\\\e[D\\\\e[B${q}
       fi
-      echo -en ${q}${d}{${omv}t}\\\\e[D\\\\e[D\\\\e[B${q}
+#[c]      echo -en ${q}${d}{${omv}t}\\\\e[D\\\\e[D\\\\e[B${q}
   
       printf -v ${omv}line ${q}%${d}(( ${omv}sliderLength-(${omv}sliderPositionPercentage*${omv}sliderLength/100) ))s${q} ${q}${q}
       echo -en ${q}${d}{${omv}line// /${d}{${omv}v}\\\\e[D\\\\e[D\\\\e[B}${q}
@@ -1723,64 +1814,6 @@ ${ov}height=${q}${d}{2:-1}${q}
 }
 #[cf]
 #[cf]
-#[of]:progressSlider
-#[of]:class meta
-progressSlider_cm_baseClass=sliderBar
-#[cf]
-#[of]:static methods
-function progressSlider.staticconstructor {
-  typeset ${omv}method
-#[of]:  refresh {
-IFS='' read -r -d '' ${omv}method <<'EOF'
-refresh {
-#[c]object
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-    typeset ${omv}songLength ${omv}songTimePlayed ${omv}sliderPositionPercentage
-
-    ${omv}songLength=${d}(echo '{ ${q}command${q}: [${q}get_property${q}, ${q}duration${q}] }' | socat - /tmp/mpvsocket 2>/dev/null | grep -oP '${q}data${q}:\\K[^,]+')
-    ${omv}songTimePlayed=${d}(echo '{ ${q}command${q}: [${q}get_property${q}, ${q}playback-time${q}] }' | socat - /tmp/mpvsocket 2>/dev/null | grep -oP '${q}data${q}:\\K[^,]+')
-
-    [[ -z ${q}${d}{${omv}songLength}${q} || -z ${q}${d}{${omv}songTimePlayed##*[^[:digit:].]*}${q} ]] && {
-      ${omv}sliderPositionPercentage=0
-      ${d}{${cm}baseClass}.${m} ${o} ${q}${d}@${q}
-      return
-    }
-
-    ${omv}songLength=${q}${d}{${omv}songLength//./}${q}
-    ${omv}songLength=${q}${d}{${omv}songLength:0:-3}${q}
-    ${omv}songTimePlayed=${q}${d}{${omv}songTimePlayed//./}${q}
-    ${omv}songTimePlayed=${q}${d}{${omv}songTimePlayed:0:-3}${q}
-    ${omv}sliderPositionPercentage=${d}((10#${d}{${omv}songTimePlayed}*100/10#${d}{${omv}songLength}))
-
-    ${omv}sliderPositionPercentage=${q}${d}{${omv}sliderPositionPercentage%%.*}${q}
-    [[ -z ${q}${d}{${omv}sliderPositionPercentage}${q} ]] && ${omv}sliderPositionPercentage=0
-
-    ${d}{${cm}baseClass}.${m} ${o} ${q}${d}@${q}
-  "
-}
-EOF
-eval "eval \"function \${c}.\${${omv}method}\""
-#[cf]
-}
-#[cf]
-#[of]:dynamic methods
-function progressSlider.constructor {
-#[of]:set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-#[of]:    object data
-
-#[cf]
-  "
-}
-#[cf]
-#[cf]
 #[of]:listBox
 #[of]:description
 #[c]if this class is being used as a regular (not a base or a sub) class then the list
@@ -1813,8 +1846,9 @@ refresh {
       ${ov}leftOffset=${q}${d}{1}${q}
       ${ov}topOffset=${q}${d}{2}${q}
     }
-
     ${o}.runEventAction refresh
+    [[ -z ${q}${d}{${ov}topOffset}${q} ]] && return
+
 
     for ((${omv}index=${ov}entryListIndexOffset;${omv}index<${ov}height+${ov}entryListIndexOffset;${omv}index++)) ; do
 #[of]:      erase line
@@ -1850,16 +1884,17 @@ updateList {
     [ ${q}${c}${q} != ${q}${smc}${q} ] && {
       if isset ${ov}listUpdater && isfnset ${q}${d}{${ov}listUpdater}${q} ; then
         ${d}{${ov}listUpdater} ${q}${ov}entryList${q}
-      else
-        ${ov}entryList=( ${q}need to set a ListUpdater method${q} ${q}sample 1${q} ${q}sample 2${q} ${q}sample 3${q} ${q}sample 4${q} )
       fi
     }
 
-    unset ${ov}entryListTrimmed
-    for ${omv}entry in ${q}${d}{${ov}entryList[@]}${q} ; do
-      screen.trimString ${omv}entry ${d}((${ov}width-2)) ${q}${d}{${omv}entry}${q}
-      apush ${ov}entryListTrimmed ${q}${d}{${omv}entry}${q}
-    done
+    ## trim the list only if buildTrimmedEntryList (default)=true
+    ${d}{${ov}buildTrimmedEntryList} && {
+      unset ${ov}entryListTrimmed
+      for ${omv}entry in ${q}${d}{${ov}entryList[@]}${q} ; do
+        screen.trimString ${omv}entry ${d}((${ov}width-2)) ${q}${d}{${omv}entry}${q}
+        apush ${ov}entryListTrimmed ${q}${d}{${omv}entry}${q}
+      done
+    }
 
     ((${d}{#${ov}entryList[@]}>0)) && eval ${q}${ov}indexLookupTable=( {0..${d}((${d}{#${ov}entryList[@]}-1))} )${q}
     ${ov}indexLookupTableReversed=( ${q}${d}{${ov}indexLookupTable[@]}${q} )
@@ -1879,11 +1914,12 @@ selectListEntry {
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
-    typeset ${omv}index
+    typeset ${omv}index ${omv}found
+    ${omv}found=0
 
-    if isnum ${q}${d}{1}${q} ; then
-      if [[ -n ${q}${d}{${ov}indexLookupTable[${d}((${ov}entryListIndexOffset+${d}{1}))]}${q} ]] ; then
-        ${ov}selectedEntry=${d}{${ov}indexLookupTable[${d}((${ov}entryListIndexOffset+${d}{1}))]}
+    if isnum ${q}${d}1${q} ; then
+      if [[ -n ${q}${d}{${ov}indexLookupTable[${d}((${ov}entryListIndexOffset+${d}1))]}${q} ]] ; then
+        ${ov}selectedEntry=${d}{${ov}indexLookupTable[${d}((${ov}entryListIndexOffset+${d}1))]}
       else
         return 1
       fi
@@ -1891,24 +1927,13 @@ selectListEntry {
       for ${omv}index in ${q}${d}{!${ov}entryList[@]}${q} ; do
         [[ ${q}${d}{${ov}entryList[${d}{${omv}index}]}${q} = ${q}${d}{1}${q} ]] && {
           ${ov}selectedEntry=${d}{${omv}index}
+          ${omv}found=1
           break
         }
       done
+      ((${omv}found)) || return 1
       for ((${ov}entryListIndexOffset=0;${ov}entryListIndexOffset<${ov}indexLookupTableReversed[${d}{${ov}selectedEntry}]+1-${ov}height;${ov}entryListIndexOffset+=${ov}height)) ; do :;done
     fi
-
-    [[ ${q}${d}{${ov}entryList[${d}{${ov}selectedEntry}]}${q} = ${q}..${q} ]] && {
-      ${o}.refresh
-      ${ov}pwd=${d}(cd ${q}${d}{${ov}pwd}${q};cd ..;pwd)
-      ${o}.updateList
-      return 1
-    }
-    [[ -d ${q}${d}{${ov}pwd}/${d}{${ov}entryList[${d}{${ov}selectedEntry}]}${q} ]] && {
-      ${o}.refresh
-      ${ov}pwd=${d}(cd ${q}${d}{${ov}pwd}/${d}{${ov}entryList[${d}{${ov}selectedEntry}]}${q};pwd)
-      ${o}.updateList
-      return 1
-    }
     
     return 0
   "
@@ -2012,6 +2037,21 @@ eval "eval \"function \${c}.\${${omv}method}\""
 #[c]${ov}height
 #[c]
 #[cf]
+#[of]:  setEntryList {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+setEntryList {
+#[c]object
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    ${ov}entryList=( ${q}${d}@${q} )
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[cf]
 }
 #[cf]
 #[of]:dynamic methods
@@ -2068,18 +2108,459 @@ eval "function ${o}.${m} {
 #[of]:    object data
 newvar ${ov}entryList ${ov}entryListTrimmed ${ov}entryListIndexOffset ${ov}indexLookupTable
 newvar ${ov}selectedEntry
+
+newvar ${ov}buildTrimmedEntryList
+
+${ov}buildTrimmedEntryList=true
+
+if [[ ${q}${c}${q} = ${q}listBox${q} ]] ; then
+  if ((${d}#>2)) ; then
+    ${ov}entryList=( ${q}${d}{@:3}${q} )
+  else
+    ## default entries for new object with undefined list
+    ${ov}entryList=( ${q}need to set a ListUpdater method${q} ${q}or call the setEntryList method${q} ${q}sample 1${q} ${q}sample 2${q} ${q}sample 3${q} ${q}sample 4${q} )
+  fi
+  ${o}.updateList
+fi
+
 #[cf]
 #[c]    ${o}.updateList
   "
 }
 #[cf]
 #[cf]
-#[of]:fileBrowserBox
+#[of]:textBox
 #[of]:class meta
-fileBrowserBox_cm_baseClass=listBox
+textBox_cm_baseClass=screenObject
 #[cf]
 #[of]:static methods
-function fileBrowserBox.staticconstructor {
+function textBox.staticconstructor {
+  typeset ${omv}method
+#[of]:  open {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+open {
+#[c]object -|var
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}key ${omv}mouse
+    typeset ${omv}mouseEvent ${omv}mouseEvents ${omv}mouseButtonId ${omv}mouseButtonName
+    typeset ${omv}mouseXStart ${omv}mouseYStart ${omv}mouseX ${omv}mouseY
+    typeset ${omv}currentRelX ${omv}currentRelY ${omv}relX ${omv}relY
+    typeset ${omv}mouseButtonState ${omv}shift ${omv}alt ${omv}ctrl
+    typeset ${omv}objectNamesKeys
+    typeset ${omv}objectName ${omv}objectId
+    typeset ${omv}triggerId
+
+    ${omv}refreshInterval=${q}${d}{${ov}refreshInterval}${q}
+
+    ${o}.calcScreenSize
+    ${o}.focusListBuild
+    ${o}.focusTriggerFocusEvent enter
+    clear
+    ${o}.refresh
+    ${c}.mouseEnable -d
+#[of]:    key process loop
+    while : ; do
+      ((${ov}flagExit)) && {
+        ${ov}flagExit=0
+        break
+      }
+      read -s -N 1 -r ${d}{${ov}tickIntervalSeconds:+-t ${d}{${ov}tickIntervalSeconds}} ${omv}key || {
+        ((${ov}tick+=1))
+        ((${ov}tick>${ov}tickMax)) && ${ov}tick=0
+
+        for ${omv}triggerId in ${q}${d}{!${ov}timerTriggerIdList[@]}${q} ; do
+          ((${ov}tick%${ov}tickTriggers[${d}((${omv}triggerId*3))]==0)) && {
+            ${d}{${ov}tickTriggers[${d}((${omv}triggerId*3+1))]}.runEventAction ${d}{${ov}tickTriggers[${d}((${omv}triggerId*3+2))]}
+          }
+        done
+
+        ((${ov}refreshInterval>0)) && ((${ov}tick%${ov}refreshInterval==0)) && ${o}.refresh
+      }
+      case ${q}${d}{${omv}key}${q} in
+#[of]:        escaped keys
+        ${d}'\e')
+          read -s -N 2 -r -t .1 ${omv}key || {
+#[of]:            esc
+#[c]            esc itself is just a single char
+#[c]            if read timeout is reached the key must be esc
+            ${omv}key=esc
+            ${ov}inputEventActions.getkey ! ${q}${d}{${omv}key}${q} && ${omv}objectName=${o} || ${omv}objectName=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
+            ${o}.processEvent \
+              ${q}${d}{${omv}objectName}${q} \
+              ${q}${d}{${omv}key}${q} \
+              0 0 \
+              0 0 || \
+            echo ${q}ascii ---${d}{${omv}key}---esc---${d}{${omv}objectName:-${o}}${q}
+            continue
+#[cf]
+          }
+          [[ ${q}${d}{${omv}key}${q} == '[1' ]] && read -s -N 3 -r -t .1 ${omv}key
+          case ${q}${d}{${omv}key}${q} in
+#[of]:            mouse
+            '[<')
+#[of]:              read mouse input strings from terminal
+              ${omv}mouseButtonId=${q}${q}
+              while read -s -N 1 -r ${omv}key ; do
+                [[ ${q}${d}{${omv}key}${q} == ${q};${q} ]] && break
+                ${omv}mouseButtonId=${q}${d}{${omv}mouseButtonId}${d}{${omv}key}${q}
+              done
+              ${omv}mouseX=${q}${q}
+              while read -s -N 1 -r ${omv}key ; do
+                [[ ${q}${d}{${omv}key}${q} == ${q};${q} ]] && break
+                ${omv}mouseX=${q}${d}{${omv}mouseX}${d}{${omv}key}${q}
+              done
+              ${omv}mouseY=${q}${q}
+              while read -s -N 1 -r ${omv}key ; do
+                [ -z ${q}${d}{${omv}key#[Mm]}${q} ] && break
+                ${omv}mouseY=${q}${d}{${omv}mouseY}${d}{${omv}key}${q}
+              done
+              [[ ${q}${d}{${omv}key}${q} == ${q}M${q} ]] && ${omv}mouseButtonState=${q}Down${q} || ${omv}mouseButtonState=${q}Up${q}
+              ((${omv}mouseX--))
+              ((${omv}mouseY--))
+#[cf]
+#[of]:              decode mouse input into event tags
+
+#[c]              left middle right scroll_Up scroll_Down
+#[c]              shift alt ctrl
+
+              (( (${omv}mouseButtonId & 4 )==4  )) && ${omv}shift=${q}Shift${q} || ${omv}shift=${q}${q}
+              (( (${omv}mouseButtonId & 8 )==8  )) && ${omv}alt=${q}Alt${q}     || ${omv}alt=${q}${q}
+              (( (${omv}mouseButtonId & 16)==16 )) && ${omv}ctrl=${q}Ctrl${q}   || ${omv}ctrl=${q}${q}
+              (( (${omv}mouseButtonId & 32)==32 )) && ${omv}mouseButtonState=${q}Drag${q}
+              case ${q}${d}((${omv}mouseButtonId & 67))${q} in
+                 0) ${omv}mouseButtonName=${q}Left${q}   ;;&
+                 1) ${omv}mouseButtonName=${q}Middle${q} ;;&
+                 2) ${omv}mouseButtonName=${q}Right${q}  ;;&
+                64) ${omv}mouseButtonName=${q}Scroll${q}
+                    ${omv}mouseButtonState=${q}Up${q}    ;;
+                65) ${omv}mouseButtonName=${q}Scroll${q}
+                    ${omv}mouseButtonState=${q}Down${q}  ;;
+                 *) case ${q}${d}{${omv}mouseButtonState}${q} in
+                      Down)
+                        ${ov}previousMouseButtonName=${q}${d}{${omv}mouseButtonName}${q}
+                        ${ov}previousMouseX=${q}${d}{${omv}mouseX}${q}
+                        ${ov}previousMouseY=${q}${d}{${omv}mouseY}${q}
+                        ;;
+                      Up)
+                        [[  ${q}${d}{${ov}previousMouseButtonName}${q} = ${q}${d}{${omv}mouseButtonName}${q} &&
+                            ${q}${d}{${ov}previousMouseX}${q} = ${q}${d}{${omv}mouseX}${q} &&
+                            ${q}${d}{${ov}previousMouseY}${q} = ${q}${d}{${omv}mouseY}${q} ]] && \
+                          aunshift ${omv}mouseEvents ${q}mouse${d}{${omv}mouseButtonName}Click${d}{${omv}shift}${d}{${omv}alt}${d}{${omv}ctrl}${q}
+                        ;;
+                    esac
+                    ;;
+              esac
+              aunshift ${omv}mouseEvents ${q}mouse${d}{${omv}mouseButtonName}${d}{${omv}mouseButtonState}${d}{${omv}shift}${d}{${omv}alt}${d}{${omv}ctrl}${q}
+#[cf]
+
+#[c]              object on screen has TOPxLEFT and WIDTHxHEIGHT
+#[c]                button Down event
+#[c]                  -if xy no longer on the current object it is a drag-drop operation
+#[c]                  setCurrentScreenObject buttonID/textBoxID/windowID/etc...
+#[c]                  screen.objectID.sendEvent mouse_Left_Down x-left y-top
+#[c]                button Up event
+#[c]                  screen.objectID.sendEvent mouse_Left_Up objectID sx-left sy-top x-left y-top
+#[c]                
+#[c]              
+#[c]              for objectID in screen_objects do
+#[c]                if top<y<top+height && left<x<left+width ; then
+#[c]                  if [[ ${q}${d}{${omv}mouseButtonName}${q} == ${q}scroll${q} || ${q}${d}{${omv}mouseButtonState}${q} == ${q}Down${q} ]] && setCurrentScreenObject=${objectID}
+#[c]                  screen.sendEvent objectID mouse_Left_Down x-left y-top
+#[c]                  break
+#[c]                fi
+#[c]              done
+
+#[of]:              find object under current mouse position
+              ${omv}relX=${d}{${omv}mouseX}
+              ${omv}relY=${d}{${omv}mouseY}
+              ${omv}objectName=${q}${q}
+
+              ## this gets the keys from ${ov}objectNames and then loops through them in reverse
+              ${omv}objectNamesKeys=( ${d}{!${ov}objectNames[@]} )
+              for ((i=${d}{#${omv}objectNamesKeys[@]}-1;i>=0;i--));do
+                ${omv}objectId=${q}${d}{${omv}objectNamesKeys[${d}{i}]}${q}
+                if  (( ${ov}objectPositions[4*${omv}objectId+0] <= ${omv}mouseX &&
+                    ${omv}mouseX <= ${ov}objectPositions[${d}((4*${omv}objectId+1))] &&
+                   ${ov}objectPositions[4*${omv}objectId+2] <= ${omv}mouseY &&
+                   ${omv}mouseY <= ${ov}objectPositions[4*${omv}objectId+3] ))
+                then
+                  ${omv}objectName=${q}${d}{${ov}objectNames[${d}{${omv}objectId}]}${q}
+#[of]:                  calculate relative position for found object
+                  ${omv}relX=${d}(( ${omv}mouseX - ${ov}objectPositions[4*${omv}objectId+0] ))
+                  ${omv}relY=${d}(( ${omv}mouseY - ${ov}objectPositions[4*${omv}objectId+2] ))
+#[cf]
+                  break
+                fi
+              done
+#[cf]
+
+#[c]###write some code that disables event actions and just shows mouse events
+#[c]###be sure the code shows screen object calls as well
+              ((gl_debug>0)) && echo ${q}s - ${d}{!${ov}objectPositions[@]} | ${d}{${ov}objectPositions[@]} -- ${d}{${omv}objectName:-${o}} ${d}{${omv}mouseEvent} ${d}{${omv}relX} ${d}{${omv}relY} ${d}{${omv}mouseX} ${d}{${omv}mouseY}${q}
+
+#[of]:              process mouse event queue list
+              while ashift ${omv}mouseEvent ${omv}mouseEvents ; do
+                ${o}.processEvent \
+                  ${q}${d}{${omv}objectName:-${o}}${q} \
+                  ${q}${d}{${omv}mouseEvent}${q} \
+                  ${q}${d}{${omv}relX}${q} ${q}${d}{${omv}relY}${q} \
+                  ${q}${d}{${omv}mouseX}${q} ${q}${d}{${omv}mouseY}${q}
+              done
+#[cf]
+              ;;
+#[cf]
+#[of]:            shift up)
+            '[a'|';2A')
+              ${omv}key=shiftUp
+              ;;&
+#[cf]
+#[of]:            shift down)
+            '[b'|';2B')
+              ${omv}key=shiftDown
+              ;;&
+#[cf]
+#[of]:            shift left)
+            '[d'|';2D')
+              ${omv}key=shiftLeft
+              ;;&
+#[cf]
+#[of]:            shift right)
+            '[c'|';2C')
+              ${omv}key=shiftRight
+              ;;&
+#[cf]
+#[of]:            alt up)
+            ';3A')
+              ${omv}key=altUp
+              ;;&
+#[cf]
+#[of]:            alt down)
+            ';3B')
+              ${omv}key=altDown
+              ;;&
+#[cf]
+#[of]:            alt left)
+            ';3D')
+              ${omv}key=altLeft
+              ;;&
+#[cf]
+#[of]:            alt right)
+            ';3C')
+              ${omv}key=altRight
+              ;;&
+#[cf]
+#[of]:            ctrl up)
+            ';5A')
+              ${omv}key=ctrlUp
+              ;;&
+#[cf]
+#[of]:            ctrl down)
+            ';5B')
+              ${omv}key=ctrlDown
+              ;;&
+#[cf]
+#[of]:            ctrl left)
+            ';5D')
+              ${omv}key=ctrlLeft
+              ;;&
+#[cf]
+#[of]:            ctrl right)
+            ';5C')
+              ${omv}key=ctrlRight
+              ;;&
+#[cf]
+#[of]:            up)
+            '[A')
+              ${omv}key=up
+              ;;&
+#[cf]
+#[of]:            down)
+            '[B')
+              ${omv}key=down
+              ;;&
+#[cf]
+#[of]:            left)
+            '[D')
+              ${omv}key=left
+              ;;&
+#[cf]
+#[of]:            right)
+            '[C')
+              ${omv}key=right
+              ;;&
+#[cf]
+#[of]:            shift tab)
+            '[Z')
+              ${omv}key=shiftTab
+              ;;&
+#[cf]
+#[of]:            page up)
+            '[5')
+              read -s -N 1 -r ${omv}key
+              [[ ${q}${d}{${omv}key}${q} = '~' ]] && ${omv}key=pageUp
+              ;;&
+#[cf]
+#[of]:            page down)
+            '[6')
+              read -s -N 1 -r ${omv}key
+              [[ ${q}${d}{${omv}key}${q} = '~' ]] && ${omv}key=pageDown
+              ;;&
+#[cf]
+#[of]:            *)
+            *)
+              ${ov}inputEventActions.getkey ! ${q}${d}{${omv}key}${q} && ${omv}objectName=${o} || ${omv}objectName=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
+              ${o}.processEvent \
+                ${q}${d}{${omv}objectName}${q} \
+                ${q}${d}{${omv}key}${q} \
+                0 0 \
+                0 0 || \
+              echo ${q}ascii ---${d}{${omv}key}---esc---${d}{${omv}objectName:-${o}}${q}
+              ;;
+#[cf]
+          esac
+          ;;
+#[cf]
+#[of]:        enter)
+        '
+')
+          ${omv}key=enter
+          ;;&
+#[cf]
+#[of]:        tab)
+        '	')
+          ${omv}key=tab
+          ;;&
+#[cf]
+#[of]:        tick)
+        '')
+          ;;
+#[cf]
+#[of]:        *)
+        *)
+          ${ov}inputEventActions.getkey ! ${q}${d}{${omv}key}${q} && ${omv}objectName=${o} || ${omv}objectName=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
+          ${o}.processEvent \
+            ${q}${d}{${omv}objectName}${q} \
+            ${q}${d}{${omv}key}${q} \
+            0 0 \
+            0 0 || \
+          echo ${q}ascii ---${d}{${omv}key}---chr---${d}{${omv}objectName:-${o}}${q}
+          ;;
+#[cf]
+      esac
+    done
+#[cf]
+    ${c}.mouseDisable
+
+    clear
+    return 0
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[cf]
+#[of]:  refresh {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+refresh {
+#[c]object
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}hasFocus ${omv}length ${omv}index ${omv}line
+    [[ -n ${q}${d}{2}${q} ]] && {
+      ${ov}leftOffset=${q}${d}{1}${q}
+      ${ov}topOffset=${q}${d}{2}${q}
+    }
+    ${o}.runEventAction refresh
+    [[ -z ${q}${d}{${ov}topOffset}${q} ]] && return
+
+
+    [[ -n ${q}${d}4${q} ]] && {
+      [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${ov}hasFocus=1 || ${ov}hasFocus=0
+    }
+
+    ((${ov}height>2)) && {
+      for ((${omv}index=0;${omv}index<${ov}height;${omv}index++)) ; do
+        ${o}.setcursorxy 0 ${d}{${omv}index}
+        printf ${q}%${d}((${ov}width))s${q} ${q}${q}
+      done
+      
+      ((${ov}drawBorder)) && ${o}.drawBorder
+    }
+
+    ((${ov}hasFocus)) && ${o}.styleSetReverse
+    
+    screen.stringLength ${omv}length ${q}${d}{${ov}title}${q}
+#[c]    ${o}.setcursorxy 0 ${d}((${ov}height/2))
+#[c]    printf ${q}%${d}((${ov}width))s${q} ${q}${q}
+    if ((${ov}txtAlignment)) ; then
+      ${o}.setcursorxy 0 ${d}((${ov}height&1?${ov}height/2:${ov}height/2-1))
+    else
+      ${o}.setcursorxy ${d}((${ov}width/2-${d}{${omv}length}/2)) ${d}((${ov}height&1?${ov}height/2:${ov}height/2-1))
+    fi
+    echo -n ${q}${d}{${ov}title:0:${d}((${ov}width))}${q}
+
+    ((${ov}hasFocus)) && ${o}.styleSetNormal
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[c]
+#[c]without focus just draw box
+#[c]with focus
+#[c]  start read loop
+#[c]    check for exit key/s or mouse click outside of box
+#[c]    all other keys are captured and added into the txtBox buffer
+#[c]
+#[c]forward mouse clicks to screen, how??
+#[c]any click outside of box loses focus
+#[c]  focus doesn't have to go anywhere, but can't stay here
+#[cf]
+}
+#[cf]
+#[of]:dynamic methods
+function textBox.constructor {
+#[of]:set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+#[of]:  setTitle
+m=setTitle
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  ${ov}title=${q}${d}1${q}
+
+  if ((${ov}width==0)) ; then
+    if ((${ov}drawBorder)) && ((${ov}height>2)) ; then
+      ${ov}width=${d}((${d}{#${ov}title}+4))
+    else
+      ${ov}width=${d}{#${ov}title}
+    fi
+  else
+    screen.trimString ${ov}title ${d}{${ov}width} ${q}${d}{${ov}title}${q}
+  fi
+}"
+#[cf]
+  eval "
+#[of]:    object data
+
+#[cf]
+  "
+}
+#[cf]
+#[cf]
+#[c]
+#[of]:browserBoxFile
+#[of]:class meta
+browserBoxFile_cm_baseClass=listBox
+#[cf]
+#[of]:static methods
+function browserBoxFile.staticconstructor {
   typeset ${omv}method
 #[of]:  refresh {
 IFS='' read -r -d '' ${omv}method <<'EOF'
@@ -2119,6 +2600,68 @@ updateList {
 EOF
 eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
+#[of]:  selectListEntry {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+selectListEntry {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    ${d}{${cm}baseClass}.${m} ${o} ${q}${d}@${q} || return ${d}?
+
+    [[ ${q}${d}{${ov}entryList[${d}{${ov}selectedEntry}]}${q} = ${q}..${q} ]] && {
+      ${o}.movePwdUp
+      return 1
+    }
+    [[ -d ${q}${d}{${ov}pwd}/${d}{${ov}entryList[${d}{${ov}selectedEntry}]}${q} ]] && {
+      ${ov}pwd=${q}${d}{${ov}pwd%/}/${d}{${ov}entryList[${d}{${ov}selectedEntry}]}${q}
+      ${o}.updateList
+      return 1
+    }
+    
+    return 0
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[cf]
+#[of]:  getSelectedListEntry {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+getSelectedListEntry {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+      echo ${q}${d}{${ov}pwd}/${d}{${ov}entryList[${d}{${ov}selectedEntry}]}${q}
+    else
+      eval ${d}1=\\${q}\\${d}{${ov}pwd}/\\${d}{${ov}entryList[\\${d}{${ov}selectedEntry}]}\\${q}
+    fi
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[cf]
+#[of]:  getSelectedListEntryName
+IFS='' read -r -d '' ${omv}method <<'EOF'
+getSelectedListEntryName {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
+      echo ${q}${d}{${ov}entryList[${d}{${ov}selectedEntry}]}${q}
+    else
+      eval ${d}1=\\${q}\\${d}{${ov}entryList[\\${d}{${ov}selectedEntry}]}\\${q}
+    fi
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[cf]
 #[of]:  setPwd {
 IFS='' read -r -d '' ${omv}method <<'EOF'
 setPwd {
@@ -2150,10 +2693,17 @@ eval "eval \"function \${c}.\${${omv}method}\""
 }
 #[cf]
 #[of]:dynamic methods
-function fileBrowserBox.constructor {
+function browserBoxFile.constructor {
 #[of]:set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
+#[cf]
+#[of]:  movePwdUp
+m=movePwdUp
+omv=${o}_mv_${m}_
+eval "function ${o}.${m} {
+  ${o}.setPwd ${q}${d}(cd ${q}${d}{${ov}pwd}/..${q};pwd)${q}
+}"
 #[cf]
 #[of]:  public settable object data
   newPublicVar pwd
@@ -2168,3 +2718,4 @@ function fileBrowserBox.constructor {
 }
 #[cf]
 #[cf]
+# vim:number:tabstop=2:shiftwidth=2:autoindent:foldmethod=marker:foldlevel=0:foldmarker=#[of]\:,#[cf]
