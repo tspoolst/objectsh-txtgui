@@ -14,6 +14,15 @@
 #[c]  already exist if $(o).refresh is called on a control object
 #[c]    however most controls don't have code to erase that block of screen first
 #[c]  if refresh called on a screen/window all children of that screen/window are updated
+#[c]
+#[c]
+#[c]refresh
+#[c]  screen
+#[c]  window
+#[c]  control
+#[c]
+#[c]ask control if it needs to update?
+#[c]have control update itself on trigger?
 #[cf]
 #[c]
 #[c]
@@ -206,6 +215,12 @@ eval "function ${o}.${m} {
 m=runEventAction
 omv=${o}_mv_${m}_
 eval "function ${o}.${m} {
+  ((${d}{#FUNCNAME[@]}>30)) && {
+    clear
+    echo ${q}method recursion exceeded 30${q}
+    echo ${q}${d}{FUNCNAME[@]}${q}
+    screen.mouseDisable;exit
+  }
   typeset ${omv}objectName ${omv}action o
   o=${o}
   if ${o}.getEventAction ${omv}objectName ${omv}action ! ! ${q}${d}1${q} ; then
@@ -243,16 +258,19 @@ eval "function ${o}.${m} {
 }"
 #[cf]
 #[of]:  public settable object data
-  newPublicVar height width title drawBorder borderStyle
+  newPublicVar height width title drawBorder borderStyle focusId
+
 #[cf]
   eval "
 #[of]:    object data
 newvar ${ov}leftOffset ${ov}topOffset
 newvar ${ov}screenParents
+newvar ${ov}hasFocus
+
 new hash ${ov}inputEventActions
 
-${ov}leftOffset=0
-${ov}topOffset=0
+#${ov}leftOffset=0
+#${ov}topOffset=0
 
 ${ov}drawBorder=0
 ${ov}borderStyle=0
@@ -487,10 +505,10 @@ function screen.classconstructor {
 #[of]:    function ${c}.mouseEnable {
 function ${c}.mouseEnable {
   stty -echo
-  if [[ ${q}${d}1${q} == ${q}-d${q} ]] ; then
-    echo -en '\e[?1002;1006;1015h'
-  else
+  if [[ ${q}${d}1${q} == ${q}--no-drag${q} ]] ; then
     echo -en '\e[?1000;1006;1015h'
+  else
+    echo -en '\e[?1002;1006;1015h'
   fi
 }
 #[cf]
@@ -558,7 +576,7 @@ open {
     ${o}.focusTriggerFocusEvent enter
     clear
     ${o}.refresh
-    ${c}.mouseEnable -d
+    ${c}.mouseEnable
 #[of]:    key process loop
     while : ; do
       ((${ov}flagExit)) && {
@@ -980,7 +998,7 @@ processEvent {
       ${q}${d}{${omv}relX}${q} ${q}${d}{${omv}relY}${q} \
       ${q}${d}{${omv}mouseX}${q} ${q}${d}{${omv}mouseY}${q} && {
           if ! ((gl_debug>1)) ; then
-            ${c}.mouseDisable
+            #${c}.mouseDisable
             ((gl_debug>0)) && echo ${d}{${omv}currentObjectName}.runEventAction \
               ${q}${d}{${omv}event}${q} \
               ${q}${d}{${omv}currentRelX}${q} ${q}${d}{${omv}currentRelY}${q} \
@@ -990,8 +1008,8 @@ processEvent {
               ${q}${d}{${omv}currentRelX}${q} ${q}${d}{${omv}currentRelY}${q} \
               ${q}${d}{${omv}mouseX}${q} ${q}${d}{${omv}mouseY}${q}
             #${o}.calcScreenSize
-            ${o}.refresh
-            ${c}.mouseEnable -d
+            #${o}.refresh
+            #${c}.mouseEnable
           else
             echo ${d}{${omv}currentObjectName}.runEventAction ${q}${d}{${omv}event}${q} ${d}{${omv}currentRelX} ${d}{${omv}currentRelY} ${d}{${omv}mouseX} ${d}{${omv}mouseY}
           fi
@@ -1027,44 +1045,6 @@ focusListBuild {
 EOF
 eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
-#[of]:  focusSelectByName {
-IFS='' read -r -d '' ${omv}method <<'EOF'
-focusSelectByName {
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-    typeset ${omv}focusedObjectCurrent ${omv}focusedObjectNew
-    typeset ${omv}focusListKey ${omv}objectName ${omv}objectLocated
-    ${omv}objectLocated=0
-    ${omv}objectName=${q}${d}1${q}
-
-    ${o}.focusListBuild
-    ${omv}focusedObjectCurrent=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
-
-    for ${omv}focusListKey in ${q}${d}{!${ov}focusListMerged[@]}${q} ; do
-      if [[ ${q}${d}{${omv}objectName}${q} = ${q}${d}{${ov}focusListMerged[${d}{${omv}focusListKey}]##*_}${q} ]] ; then
-        ${omv}objectLocated=1
-        ${ov}focusedObjectIndex=${d}{${omv}focusListKey}
-        break
-      fi
-    done
-    if ! ((${omv}objectLocated)) ; then
-      die 1 ${q}${c}.${d}{FUNCNAME[1]##*.} -- the control object ${d}{${omv}objectName} is not in the ${o} focusList${q}
-    fi
-
-    ${omv}focusedObjectNew=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
-    
-    if [[ ${q}${d}{${omv}focusedObjectCurrent}${q} != ${q}${d}{${omv}focusedObjectNew}${q} ]] ; then
-      ${o}.processEvent ${q}${d}{${omv}focusedObjectCurrent}${q} ${q}focusExit${q} 0 0 0 0
-      ${o}.processEvent ${q}${d}{${omv}focusedObjectNew}${q} ${q}focusEnter${q} 0 0 0 0
-    fi
-  "
-}
-EOF
-eval "eval \"function \${c}.\${${omv}method}\""
-#[cf]
 #[of]:  focusTriggerFocusEvent {
 IFS='' read -r -d '' ${omv}method <<'EOF'
 focusTriggerFocusEvent {
@@ -1085,6 +1065,47 @@ focusTriggerFocusEvent {
 EOF
 eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
+#[of]:  focusSelectByName {
+IFS='' read -r -d '' ${omv}method <<'EOF'
+focusSelectByName {
+#[of]:  set common environment
+#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
+  . ${gl_classpath}/classcommonenv.sh
+#[cf]
+  eval "
+    typeset ${omv}focusedObjectCurrent ${omv}focusedObjectNew ${omv}focusId
+    typeset ${omv}focusListKey ${omv}objectName ${omv}objectLocated
+    ${omv}objectLocated=0
+    ${omv}objectName=${q}${d}1${q}
+
+${o}.focusListBuild
+    ${omv}focusedObjectCurrent=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
+
+    for ${omv}focusListKey in ${q}${d}{!${ov}focusListMerged[@]}${q} ; do
+      if [[ ${q}${d}{${omv}objectName}${q} = ${q}${d}{${ov}focusListMerged[${d}{${omv}focusListKey}]##*_}${q} ]] ; then
+        ${omv}objectLocated=1
+        ${ov}focusedObjectIndex=${d}{${omv}focusListKey}
+        break
+      fi
+    done
+    if ! ((${omv}objectLocated)) ; then
+      die 1 ${q}${c}.${d}{FUNCNAME[1]##*.} -- the control object ${d}{${omv}objectName} is not in the ${o} focusList${q}
+    fi
+
+    ${omv}focusedObjectNew=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
+    ${d}{${omv}focusedObjectNew}.getFocusId ${omv}focusId
+
+    if [[ ${q}${d}{${omv}focusedObjectCurrent}${q} != ${q}${d}{${omv}focusedObjectNew}${q} ]] ; then
+      ${o}.processEvent ${q}${d}{${omv}focusedObjectCurrent}${q} ${q}focusExit${q} 0 0 0 0
+      ${o}.processEvent ${q}${d}{${omv}focusedObjectNew}${q} ${q}focusEnter${q} 0 0 0 0
+      ${d}{${omv}focusedObjectCurrent}.refresh ! ! ! ${d}{${omv}focusId}
+      ${d}{${omv}focusedObjectNew}.refresh ! ! ! ${d}{${omv}focusId}
+    fi
+  "
+}
+EOF
+eval "eval \"function \${c}.\${${omv}method}\""
+#[cf]
 #[of]:  focusNext {
 IFS='' read -r -d '' ${omv}method <<'EOF'
 focusNext {
@@ -1095,7 +1116,7 @@ focusNext {
   eval "
     ((${d}{#${ov}focusList[@]})) || return 1
 
-    typeset ${omv}focusedObjectCurrent ${omv}focusedObjectNew ${omv}objectName
+    typeset ${omv}focusedObjectCurrent ${omv}focusedObjectNew ${omv}focusId ${omv}objectName
 
     ${omv}focusedObjectCurrent=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
 
@@ -1106,10 +1127,13 @@ focusNext {
     fi
 
     ${omv}focusedObjectNew=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
-    
+    ${d}{${omv}focusedObjectNew}.getFocusId ${omv}focusId
+
     if [[ ${q}${d}{${omv}focusedObjectCurrent}${q} != ${q}${d}{${omv}focusedObjectNew}${q} ]] ; then
       ${o}.processEvent ${q}${d}{${omv}focusedObjectCurrent}${q} ${q}focusExit${q} 0 0 0 0
       ${o}.processEvent ${q}${d}{${omv}focusedObjectNew}${q} ${q}focusEnter${q} 0 0 0 0
+      ${d}{${omv}focusedObjectCurrent}.refresh ! ! ! ${d}{${omv}focusId}
+      ${d}{${omv}focusedObjectNew}.refresh ! ! ! ${d}{${omv}focusId}
     fi
   "
 }
@@ -1168,7 +1192,7 @@ focusPrevious {
   eval "
     ((${d}{#${ov}focusList[@]})) || return 1
 
-    typeset ${omv}focusedObjectCurrent ${omv}focusedObjectNew ${omv}objectName
+    typeset ${omv}focusedObjectCurrent ${omv}focusedObjectNew ${omv}focusId ${omv}objectName
 
     ${omv}focusedObjectCurrent=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
 
@@ -1179,10 +1203,13 @@ focusPrevious {
     fi
 
     ${omv}focusedObjectNew=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
+    ${d}{${omv}focusedObjectNew}.getFocusId ${omv}focusId
 
     if [[ ${q}${d}{${omv}focusedObjectCurrent}${q} != ${q}${d}{${omv}focusedObjectNew}${q} ]] ; then
       ${o}.processEvent ${q}${d}{${omv}focusedObjectCurrent}${q} ${q}focusExit${q} 0 0 0 0
       ${o}.processEvent ${q}${d}{${omv}focusedObjectNew}${q} ${q}focusEnter${q} 0 0 0 0
+      ${d}{${omv}focusedObjectCurrent}.refresh ! ! ! ${d}{${omv}focusId}
+      ${d}{${omv}focusedObjectNew}.refresh ! ! ! ${d}{${omv}focusId}
     fi
   "
 }
@@ -1359,16 +1386,21 @@ refresh {
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
-    typeset ${omv}objectId ${omv}left ${omv}top ${omv}width ${omv}height ${omv}parentFocusKey
-    [[ -n ${q}${d}{2}${q} ]] && {
+    typeset ${omv}objectId ${omv}left ${omv}top ${omv}width ${omv}height
+    [[ ${q}${d}2${q} != ${q}!${q} && -n ${q}${d}{2}${q} ]] && {
       ${ov}leftOffset=${q}${d}{1}${q}
       ${ov}topOffset=${q}${d}{2}${q}
     }
-    ${omv}parentFocusKey=${q}${d}3${q}
-    ${omv}focusedObject=${q}${d}4${q}
-    
     ${o}.runEventAction refresh
+    [[ -z ${q}${d}{${ov}topOffset}${q} ]] && return
 
+    ${ov}focusId=${q}${d}3${q}
+    ${omv}focusedObject=${q}${d}4${q}
+    [[ -n ${q}${d}4${q} && ${q}${d}3${q} != ${q}!${q} ]] && {
+      [[ ${q}${d}{${ov}focusId}${q} = ${q}${d}4${q} ]] && ${ov}hasFocus=1 || ${ov}hasFocus=0
+    }
+
+    
     ((${ov}drawBorder)) && ${o}.drawBorder
 
     for ${omv}objectId in ${q}${d}{!${ov}objectNames[@]}${q} ; do
@@ -1384,7 +1416,7 @@ refresh {
       ${d}{${ov}objectNames[${d}{${omv}objectId}]}.refresh \
         ${q}${d}((${ov}leftOffset+${omv}left))${q} \
         ${q}${d}((${ov}topOffset+${omv}top))${q} \
-        ${q}${d}{${omv}parentFocusKey}_${d}{${ov}objectNames[${d}{${omv}objectId}]}${q} \
+        ${q}${d}{${ov}focusId}_${d}{${ov}objectNames[${d}{${omv}objectId}]}${q} \
         ${q}${d}{${omv}focusedObject}${q}
     done
     ${o}.setcursorxy 1 1
@@ -1542,22 +1574,29 @@ refresh {
 #[cf]
   eval "
     typeset ${omv}hasFocus ${omv}length ${omv}index ${omv}line
-    [[ -n ${q}${d}{2}${q} ]] && {
+    [[ ${q}${d}2${q} != ${q}!${q} && -n ${q}${d}{2}${q} ]] && {
       ${ov}leftOffset=${q}${d}{1}${q}
       ${ov}topOffset=${q}${d}{2}${q}
     }
+#[c]echo \"r \${FUNCNAME[@]}\" >&2
+
     ${o}.runEventAction refresh
     [[ -z ${q}${d}{${ov}topOffset}${q} ]] && return
 
-
     [[ -n ${q}${d}4${q} ]] && {
-      [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${ov}hasFocus=1 || ${ov}hasFocus=0
+      [[ ${q}${d}3${q} != ${q}!${q} ]] && ${ov}focusId=${q}${d}3${q}
+      [[ ${q}${d}{${ov}focusId}${q} = ${q}${d}4${q} ]] && ${ov}hasFocus=1 || ${ov}hasFocus=0
     }
 
-    for ((${omv}index=0;${omv}index<${ov}height;${omv}index++)) ; do
-      ${o}.setcursorxy 0 ${d}{${omv}index}
-      printf ${q}%${d}((${ov}width))s${q} ${q}${q}
-    done
+
+    screen.stringLength ${omv}length ${q}${d}{${ov}title}${q}
+    
+    ((${ov}height>1)) || ((${d}{${omv}length}<${ov}width)) && {
+      for ((${omv}index=0;${omv}index<${ov}height;${omv}index++)) ; do
+        ${o}.setcursorxy 0 ${d}{${omv}index}
+        printf ${q}%${d}((${ov}width))s${q} ${q}${q}
+      done
+    }
       
     ((${ov}height>2)) && {
       ((${ov}drawBorder)) && ${o}.drawBorder
@@ -1565,7 +1604,6 @@ refresh {
 
     ((${ov}hasFocus)) && ${o}.styleSetReverse
     
-    screen.stringLength ${omv}length ${q}${d}{${ov}title}${q}
     if ((${ov}txtAlignment)) ; then
       ${o}.setcursorxy 0 ${d}((${ov}height&1?${ov}height/2:${ov}height/2-1))
     else
@@ -1592,8 +1630,6 @@ function screenObject.constructor {
 #[cf]
   eval "
 #[of]:    object data
-newvar ${ov}hasFocus
-
 ${ov}txtAlignment=0
 #[cf]
   "
@@ -1616,6 +1652,8 @@ omv=${o}_mv_${m}_
 eval "function ${o}.${m} {
   ${ov}title=${q}${d}1${q}
 
+#[c]echo \"s \${FUNCNAME[@]}\" >&2
+
   if ((${ov}width==0)) ; then
     if ((${ov}drawBorder)) && ((${ov}height>2)) ; then
       ${ov}width=${d}((${d}{#${ov}title}+4))
@@ -1625,6 +1663,7 @@ eval "function ${o}.${m} {
   else
     screen.trimString ${ov}title ${d}{${ov}width} ${q}${d}{${ov}title}${q}
   fi
+  [[ \"\${FUNCNAME[2]##*.}\" != \"refresh\" ]] && ${o}.refresh
 }"
 #[cf]
   eval "
@@ -1671,17 +1710,19 @@ refresh {
 #[cf]
   eval "
     typeset ${omv}sliderLength ${omv}songLength ${omv}songTimePlayed
-    [[ -n ${q}${d}{2}${q} ]] && {
+    typeset ${omv}h ${omv}v ${omv}t ${omv}b ${omv}line
+    [[ ${q}${d}2${q} != ${q}!${q} && -n ${q}${d}{2}${q} ]] && {
       ${ov}leftOffset=${q}${d}{1}${q}
       ${ov}topOffset=${q}${d}{2}${q}
     }
     ${o}.runEventAction refresh
     [[ -z ${q}${d}{${ov}topOffset}${q} ]] && return
 
-
     [[ -n ${q}${d}4${q} ]] && {
-      [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${ov}hasFocus=1 || ${ov}hasFocus=0
+      [[ ${q}${d}3${q} != ${q}!${q} ]] && ${ov}focusId=${q}${d}3${q}
+      [[ ${q}${d}{${ov}focusId}${q} = ${q}${d}4${q} ]] && ${ov}hasFocus=1 || ${ov}hasFocus=0
     }
+
 
     if ((${ov}hasFocus)) ; then
       ${omv}h='~'
@@ -1842,7 +1883,7 @@ refresh {
 #[cf]
   eval "
     typeset ${omv}index
-    [[ -n ${q}${d}{2}${q} ]] && {
+    [[ ${q}${d}2${q} != ${q}!${q} && -n ${q}${d}{2}${q} ]] && {
       ${ov}leftOffset=${q}${d}{1}${q}
       ${ov}topOffset=${q}${d}{2}${q}
     }
@@ -1935,6 +1976,7 @@ selectListEntry {
       for ((${ov}entryListIndexOffset=0;${ov}entryListIndexOffset<${ov}indexLookupTableReversed[${d}{${ov}selectedEntry}]+1-${ov}height;${ov}entryListIndexOffset+=${ov}height)) ; do :;done
     fi
     
+    [[ \"\${FUNCNAME[2]##*.}\" = \"runEventAction\" ]] && ${o}.refresh
     return 0
   "
 }
@@ -1957,6 +1999,8 @@ incSelectedListEntry {
     fi
 
     ((${d}{${ov}indexLookupTableReversed[${d}{${ov}selectedEntry}]}-${ov}entryListIndexOffset>${ov}height-1)) && ${o}.pageDown
+
+    [[ \"\${FUNCNAME[2]##*.}\" = \"runEventAction\" ]] && ${o}.refresh
   "
 }
 EOF
@@ -1981,6 +2025,8 @@ decSelectedListEntry {
       ${o}.pageUp
       ${ov}selectedEntry=${d}{${ov}indexLookupTable[${d}((${ov}entryListIndexOffset+${ov}height-1))]}
     }
+
+    [[ \"\${FUNCNAME[2]##*.}\" = \"runEventAction\" ]] && ${o}.refresh
   "
 }
 EOF
@@ -2091,6 +2137,8 @@ eval "function ${o}.${m} {
   ((${ov}entryListIndexOffset>0)) && ((${ov}entryListIndexOffset=${ov}entryListIndexOffset-${ov}height))
   ((${ov}entryListIndexOffset<0)) && ${ov}entryListIndexOffset=0
   ${ov}selectedEntry=${d}{${ov}indexLookupTable[${d}{${ov}entryListIndexOffset}]}
+
+  [[ \"\${FUNCNAME[1]##*.}\" = \"runEventAction\" ]] && ${o}.refresh
 }"
 #[cf]
 #[of]:  pageDown
@@ -2099,6 +2147,8 @@ omv=${o}_mv_${m}_
 eval "function ${o}.${m} {
   ((${ov}entryListIndexOffset<${d}{#${ov}entryList[@]}-${ov}height)) && ((${ov}entryListIndexOffset=${ov}entryListIndexOffset+${ov}height))
   ${ov}selectedEntry=${d}{${ov}indexLookupTable[${d}{${ov}entryListIndexOffset}]}
+
+  [[ \"\${FUNCNAME[1]##*.}\" = \"runEventAction\" ]] && ${o}.refresh
 }"
 #[cf]
 #[of]:  public settable object data
@@ -2136,391 +2186,6 @@ textBox_cm_baseClass=screenObject
 #[of]:static methods
 function textBox.staticconstructor {
   typeset ${omv}method
-#[of]:  open {
-IFS='' read -r -d '' ${omv}method <<'EOF'
-open {
-#[c]object -|var
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-    typeset ${omv}key ${omv}mouse
-    typeset ${omv}mouseEvent ${omv}mouseEvents ${omv}mouseButtonId ${omv}mouseButtonName
-    typeset ${omv}mouseXStart ${omv}mouseYStart ${omv}mouseX ${omv}mouseY
-    typeset ${omv}currentRelX ${omv}currentRelY ${omv}relX ${omv}relY
-    typeset ${omv}mouseButtonState ${omv}shift ${omv}alt ${omv}ctrl
-    typeset ${omv}objectNamesKeys
-    typeset ${omv}objectName ${omv}objectId
-    typeset ${omv}triggerId
-
-    ${omv}refreshInterval=${q}${d}{${ov}refreshInterval}${q}
-
-    ${o}.calcScreenSize
-    ${o}.focusListBuild
-    ${o}.focusTriggerFocusEvent enter
-    clear
-    ${o}.refresh
-    ${c}.mouseEnable -d
-#[of]:    key process loop
-    while : ; do
-      ((${ov}flagExit)) && {
-        ${ov}flagExit=0
-        break
-      }
-      read -s -N 1 -r ${d}{${ov}tickIntervalSeconds:+-t ${d}{${ov}tickIntervalSeconds}} ${omv}key || {
-        ((${ov}tick+=1))
-        ((${ov}tick>${ov}tickMax)) && ${ov}tick=0
-
-        for ${omv}triggerId in ${q}${d}{!${ov}timerTriggerIdList[@]}${q} ; do
-          ((${ov}tick%${ov}tickTriggers[${d}((${omv}triggerId*3))]==0)) && {
-            ${d}{${ov}tickTriggers[${d}((${omv}triggerId*3+1))]}.runEventAction ${d}{${ov}tickTriggers[${d}((${omv}triggerId*3+2))]}
-          }
-        done
-
-        ((${ov}refreshInterval>0)) && ((${ov}tick%${ov}refreshInterval==0)) && ${o}.refresh
-      }
-      case ${q}${d}{${omv}key}${q} in
-#[of]:        escaped keys
-        ${d}'\e')
-          read -s -N 2 -r -t .1 ${omv}key || {
-#[of]:            esc
-#[c]            esc itself is just a single char
-#[c]            if read timeout is reached the key must be esc
-            ${omv}key=esc
-            ${ov}inputEventActions.getkey ! ${q}${d}{${omv}key}${q} && ${omv}objectName=${o} || ${omv}objectName=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
-            ${o}.processEvent \
-              ${q}${d}{${omv}objectName}${q} \
-              ${q}${d}{${omv}key}${q} \
-              0 0 \
-              0 0 || \
-            echo ${q}ascii ---${d}{${omv}key}---esc---${d}{${omv}objectName:-${o}}${q}
-            continue
-#[cf]
-          }
-          [[ ${q}${d}{${omv}key}${q} == '[1' ]] && read -s -N 3 -r -t .1 ${omv}key
-          case ${q}${d}{${omv}key}${q} in
-#[of]:            mouse
-            '[<')
-#[of]:              read mouse input strings from terminal
-              ${omv}mouseButtonId=${q}${q}
-              while read -s -N 1 -r ${omv}key ; do
-                [[ ${q}${d}{${omv}key}${q} == ${q};${q} ]] && break
-                ${omv}mouseButtonId=${q}${d}{${omv}mouseButtonId}${d}{${omv}key}${q}
-              done
-              ${omv}mouseX=${q}${q}
-              while read -s -N 1 -r ${omv}key ; do
-                [[ ${q}${d}{${omv}key}${q} == ${q};${q} ]] && break
-                ${omv}mouseX=${q}${d}{${omv}mouseX}${d}{${omv}key}${q}
-              done
-              ${omv}mouseY=${q}${q}
-              while read -s -N 1 -r ${omv}key ; do
-                [ -z ${q}${d}{${omv}key#[Mm]}${q} ] && break
-                ${omv}mouseY=${q}${d}{${omv}mouseY}${d}{${omv}key}${q}
-              done
-              [[ ${q}${d}{${omv}key}${q} == ${q}M${q} ]] && ${omv}mouseButtonState=${q}Down${q} || ${omv}mouseButtonState=${q}Up${q}
-              ((${omv}mouseX--))
-              ((${omv}mouseY--))
-#[cf]
-#[of]:              decode mouse input into event tags
-
-#[c]              left middle right scroll_Up scroll_Down
-#[c]              shift alt ctrl
-
-              (( (${omv}mouseButtonId & 4 )==4  )) && ${omv}shift=${q}Shift${q} || ${omv}shift=${q}${q}
-              (( (${omv}mouseButtonId & 8 )==8  )) && ${omv}alt=${q}Alt${q}     || ${omv}alt=${q}${q}
-              (( (${omv}mouseButtonId & 16)==16 )) && ${omv}ctrl=${q}Ctrl${q}   || ${omv}ctrl=${q}${q}
-              (( (${omv}mouseButtonId & 32)==32 )) && ${omv}mouseButtonState=${q}Drag${q}
-              case ${q}${d}((${omv}mouseButtonId & 67))${q} in
-                 0) ${omv}mouseButtonName=${q}Left${q}   ;;&
-                 1) ${omv}mouseButtonName=${q}Middle${q} ;;&
-                 2) ${omv}mouseButtonName=${q}Right${q}  ;;&
-                64) ${omv}mouseButtonName=${q}Scroll${q}
-                    ${omv}mouseButtonState=${q}Up${q}    ;;
-                65) ${omv}mouseButtonName=${q}Scroll${q}
-                    ${omv}mouseButtonState=${q}Down${q}  ;;
-                 *) case ${q}${d}{${omv}mouseButtonState}${q} in
-                      Down)
-                        ${ov}previousMouseButtonName=${q}${d}{${omv}mouseButtonName}${q}
-                        ${ov}previousMouseX=${q}${d}{${omv}mouseX}${q}
-                        ${ov}previousMouseY=${q}${d}{${omv}mouseY}${q}
-                        ;;
-                      Up)
-                        [[  ${q}${d}{${ov}previousMouseButtonName}${q} = ${q}${d}{${omv}mouseButtonName}${q} &&
-                            ${q}${d}{${ov}previousMouseX}${q} = ${q}${d}{${omv}mouseX}${q} &&
-                            ${q}${d}{${ov}previousMouseY}${q} = ${q}${d}{${omv}mouseY}${q} ]] && \
-                          aunshift ${omv}mouseEvents ${q}mouse${d}{${omv}mouseButtonName}Click${d}{${omv}shift}${d}{${omv}alt}${d}{${omv}ctrl}${q}
-                        ;;
-                    esac
-                    ;;
-              esac
-              aunshift ${omv}mouseEvents ${q}mouse${d}{${omv}mouseButtonName}${d}{${omv}mouseButtonState}${d}{${omv}shift}${d}{${omv}alt}${d}{${omv}ctrl}${q}
-#[cf]
-
-#[c]              object on screen has TOPxLEFT and WIDTHxHEIGHT
-#[c]                button Down event
-#[c]                  -if xy no longer on the current object it is a drag-drop operation
-#[c]                  setCurrentScreenObject buttonID/textBoxID/windowID/etc...
-#[c]                  screen.objectID.sendEvent mouse_Left_Down x-left y-top
-#[c]                button Up event
-#[c]                  screen.objectID.sendEvent mouse_Left_Up objectID sx-left sy-top x-left y-top
-#[c]                
-#[c]              
-#[c]              for objectID in screen_objects do
-#[c]                if top<y<top+height && left<x<left+width ; then
-#[c]                  if [[ ${q}${d}{${omv}mouseButtonName}${q} == ${q}scroll${q} || ${q}${d}{${omv}mouseButtonState}${q} == ${q}Down${q} ]] && setCurrentScreenObject=${objectID}
-#[c]                  screen.sendEvent objectID mouse_Left_Down x-left y-top
-#[c]                  break
-#[c]                fi
-#[c]              done
-
-#[of]:              find object under current mouse position
-              ${omv}relX=${d}{${omv}mouseX}
-              ${omv}relY=${d}{${omv}mouseY}
-              ${omv}objectName=${q}${q}
-
-              ## this gets the keys from ${ov}objectNames and then loops through them in reverse
-              ${omv}objectNamesKeys=( ${d}{!${ov}objectNames[@]} )
-              for ((i=${d}{#${omv}objectNamesKeys[@]}-1;i>=0;i--));do
-                ${omv}objectId=${q}${d}{${omv}objectNamesKeys[${d}{i}]}${q}
-                if  (( ${ov}objectPositions[4*${omv}objectId+0] <= ${omv}mouseX &&
-                    ${omv}mouseX <= ${ov}objectPositions[${d}((4*${omv}objectId+1))] &&
-                   ${ov}objectPositions[4*${omv}objectId+2] <= ${omv}mouseY &&
-                   ${omv}mouseY <= ${ov}objectPositions[4*${omv}objectId+3] ))
-                then
-                  ${omv}objectName=${q}${d}{${ov}objectNames[${d}{${omv}objectId}]}${q}
-#[of]:                  calculate relative position for found object
-                  ${omv}relX=${d}(( ${omv}mouseX - ${ov}objectPositions[4*${omv}objectId+0] ))
-                  ${omv}relY=${d}(( ${omv}mouseY - ${ov}objectPositions[4*${omv}objectId+2] ))
-#[cf]
-                  break
-                fi
-              done
-#[cf]
-
-#[c]###write some code that disables event actions and just shows mouse events
-#[c]###be sure the code shows screen object calls as well
-              ((gl_debug>0)) && echo ${q}s - ${d}{!${ov}objectPositions[@]} | ${d}{${ov}objectPositions[@]} -- ${d}{${omv}objectName:-${o}} ${d}{${omv}mouseEvent} ${d}{${omv}relX} ${d}{${omv}relY} ${d}{${omv}mouseX} ${d}{${omv}mouseY}${q}
-
-#[of]:              process mouse event queue list
-              while ashift ${omv}mouseEvent ${omv}mouseEvents ; do
-                ${o}.processEvent \
-                  ${q}${d}{${omv}objectName:-${o}}${q} \
-                  ${q}${d}{${omv}mouseEvent}${q} \
-                  ${q}${d}{${omv}relX}${q} ${q}${d}{${omv}relY}${q} \
-                  ${q}${d}{${omv}mouseX}${q} ${q}${d}{${omv}mouseY}${q}
-              done
-#[cf]
-              ;;
-#[cf]
-#[of]:            shift up)
-            '[a'|';2A')
-              ${omv}key=shiftUp
-              ;;&
-#[cf]
-#[of]:            shift down)
-            '[b'|';2B')
-              ${omv}key=shiftDown
-              ;;&
-#[cf]
-#[of]:            shift left)
-            '[d'|';2D')
-              ${omv}key=shiftLeft
-              ;;&
-#[cf]
-#[of]:            shift right)
-            '[c'|';2C')
-              ${omv}key=shiftRight
-              ;;&
-#[cf]
-#[of]:            alt up)
-            ';3A')
-              ${omv}key=altUp
-              ;;&
-#[cf]
-#[of]:            alt down)
-            ';3B')
-              ${omv}key=altDown
-              ;;&
-#[cf]
-#[of]:            alt left)
-            ';3D')
-              ${omv}key=altLeft
-              ;;&
-#[cf]
-#[of]:            alt right)
-            ';3C')
-              ${omv}key=altRight
-              ;;&
-#[cf]
-#[of]:            ctrl up)
-            ';5A')
-              ${omv}key=ctrlUp
-              ;;&
-#[cf]
-#[of]:            ctrl down)
-            ';5B')
-              ${omv}key=ctrlDown
-              ;;&
-#[cf]
-#[of]:            ctrl left)
-            ';5D')
-              ${omv}key=ctrlLeft
-              ;;&
-#[cf]
-#[of]:            ctrl right)
-            ';5C')
-              ${omv}key=ctrlRight
-              ;;&
-#[cf]
-#[of]:            up)
-            '[A')
-              ${omv}key=up
-              ;;&
-#[cf]
-#[of]:            down)
-            '[B')
-              ${omv}key=down
-              ;;&
-#[cf]
-#[of]:            left)
-            '[D')
-              ${omv}key=left
-              ;;&
-#[cf]
-#[of]:            right)
-            '[C')
-              ${omv}key=right
-              ;;&
-#[cf]
-#[of]:            shift tab)
-            '[Z')
-              ${omv}key=shiftTab
-              ;;&
-#[cf]
-#[of]:            page up)
-            '[5')
-              read -s -N 1 -r ${omv}key
-              [[ ${q}${d}{${omv}key}${q} = '~' ]] && ${omv}key=pageUp
-              ;;&
-#[cf]
-#[of]:            page down)
-            '[6')
-              read -s -N 1 -r ${omv}key
-              [[ ${q}${d}{${omv}key}${q} = '~' ]] && ${omv}key=pageDown
-              ;;&
-#[cf]
-#[of]:            *)
-            *)
-              ${ov}inputEventActions.getkey ! ${q}${d}{${omv}key}${q} && ${omv}objectName=${o} || ${omv}objectName=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
-              ${o}.processEvent \
-                ${q}${d}{${omv}objectName}${q} \
-                ${q}${d}{${omv}key}${q} \
-                0 0 \
-                0 0 || \
-              echo ${q}ascii ---${d}{${omv}key}---esc---${d}{${omv}objectName:-${o}}${q}
-              ;;
-#[cf]
-          esac
-          ;;
-#[cf]
-#[of]:        enter)
-        '
-')
-          ${omv}key=enter
-          ;;&
-#[cf]
-#[of]:        tab)
-        '	')
-          ${omv}key=tab
-          ;;&
-#[cf]
-#[of]:        tick)
-        '')
-          ;;
-#[cf]
-#[of]:        *)
-        *)
-          ${ov}inputEventActions.getkey ! ${q}${d}{${omv}key}${q} && ${omv}objectName=${o} || ${omv}objectName=${q}${d}{${ov}focusListMerged[${d}{${ov}focusedObjectIndex}]##*_}${q}
-          ${o}.processEvent \
-            ${q}${d}{${omv}objectName}${q} \
-            ${q}${d}{${omv}key}${q} \
-            0 0 \
-            0 0 || \
-          echo ${q}ascii ---${d}{${omv}key}---chr---${d}{${omv}objectName:-${o}}${q}
-          ;;
-#[cf]
-      esac
-    done
-#[cf]
-    ${c}.mouseDisable
-
-    clear
-    return 0
-  "
-}
-EOF
-eval "eval \"function \${c}.\${${omv}method}\""
-#[cf]
-#[of]:  refresh {
-IFS='' read -r -d '' ${omv}method <<'EOF'
-refresh {
-#[c]object
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-    typeset ${omv}hasFocus ${omv}length ${omv}index ${omv}line
-    [[ -n ${q}${d}{2}${q} ]] && {
-      ${ov}leftOffset=${q}${d}{1}${q}
-      ${ov}topOffset=${q}${d}{2}${q}
-    }
-    ${o}.runEventAction refresh
-    [[ -z ${q}${d}{${ov}topOffset}${q} ]] && return
-
-
-    [[ -n ${q}${d}4${q} ]] && {
-      [[ ${q}${d}3${q} = ${q}${d}4${q} ]] && ${ov}hasFocus=1 || ${ov}hasFocus=0
-    }
-
-    ((${ov}height>2)) && {
-      for ((${omv}index=0;${omv}index<${ov}height;${omv}index++)) ; do
-        ${o}.setcursorxy 0 ${d}{${omv}index}
-        printf ${q}%${d}((${ov}width))s${q} ${q}${q}
-      done
-      
-      ((${ov}drawBorder)) && ${o}.drawBorder
-    }
-
-    ((${ov}hasFocus)) && ${o}.styleSetReverse
-    
-    screen.stringLength ${omv}length ${q}${d}{${ov}title}${q}
-#[c]    ${o}.setcursorxy 0 ${d}((${ov}height/2))
-#[c]    printf ${q}%${d}((${ov}width))s${q} ${q}${q}
-    if ((${ov}txtAlignment)) ; then
-      ${o}.setcursorxy 0 ${d}((${ov}height&1?${ov}height/2:${ov}height/2-1))
-    else
-      ${o}.setcursorxy ${d}((${ov}width/2-${d}{${omv}length}/2)) ${d}((${ov}height&1?${ov}height/2:${ov}height/2-1))
-    fi
-    echo -n ${q}${d}{${ov}title:0:${d}((${ov}width))}${q}
-
-    ((${ov}hasFocus)) && ${o}.styleSetNormal
-  "
-}
-EOF
-eval "eval \"function \${c}.\${${omv}method}\""
-#[c]
-#[c]without focus just draw box
-#[c]with focus
-#[c]  start read loop
-#[c]    check for exit key/s or mouse click outside of box
-#[c]    all other keys are captured and added into the txtBox buffer
-#[c]
-#[c]forward mouse clicks to screen, how??
-#[c]any click outside of box loses focus
-#[c]  focus doesn't have to go anywhere, but can't stay here
-#[cf]
 }
 #[cf]
 #[of]:dynamic methods
@@ -2572,6 +2237,7 @@ refresh {
 #[cf]
   eval "
     [[ -z ${q}${d}{${ov}pwd}${q} ]] && ${o}.setPwd
+    ((${d}{#${ov}entryList[@]}==0)) && ${o}.updateList
 
     ${d}{${cm}baseClass}.${m} ${o} ${q}${d}@${q}
   "
@@ -2591,7 +2257,7 @@ updateList {
 
     ${omv}IFS=${q}${d}{IFS}${q}
     IFS=${d}'\\n'
-    ${ov}entryList=( ${d}( cd ${q}${d}{${ov}pwd}${q};{ find . -maxdepth 1 -type d | sort;find . -maxdepth 1 -type f | sort; } | grep -oP '^\\./\\K.*') )
+    ${ov}entryList=( ${d}( cd ${q}${d}{${ov}pwd}${q};{ find -L . -maxdepth 1 -type d | sort;find . -maxdepth 1 -type f | sort; } | grep -oP '^\\./\\K.*') )
     IFS=${q}${d}{${omv}IFS}${q}
 
     ${d}{${cm}baseClass}.${m} ${o} ${q}${d}@${q}
@@ -2608,19 +2274,22 @@ selectListEntry {
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
+    typeset ${omv}errorLevel
+    ${omv}errorLevel=0
     ${d}{${cm}baseClass}.${m} ${o} ${q}${d}@${q} || return ${d}?
 
-    [[ ${q}${d}{${ov}entryList[${d}{${ov}selectedEntry}]}${q} = ${q}..${q} ]] && {
+    if [[ ${q}${d}{${ov}entryList[${d}{${ov}selectedEntry}]}${q} = ${q}..${q} ]] ; then
       ${o}.movePwdUp
-      return 1
-    }
-    [[ -d ${q}${d}{${ov}pwd}/${d}{${ov}entryList[${d}{${ov}selectedEntry}]}${q} ]] && {
+      ${omv}errorLevel=1
+    elif [[ -d ${q}${d}{${ov}pwd}/${d}{${ov}entryList[${d}{${ov}selectedEntry}]}${q} ]] ; then
       ${ov}pwd=${q}${d}{${ov}pwd%/}/${d}{${ov}entryList[${d}{${ov}selectedEntry}]}${q}
+      ${o}.refresh
       ${o}.updateList
-      return 1
-    }
+      ${omv}errorLevel=1
+    fi
     
-    return 0
+    ${o}.refresh
+    return ${d}{${omv}errorLevel}
   "
 }
 EOF
@@ -2671,10 +2340,11 @@ setPwd {
   . ${gl_classpath}/classcommonenv.sh
 #[cf]
   eval "
-    typeset ${omv}newPwd
+    typeset ${omv}newPwd ${omv}oldPwd
+    ${omv}oldPwd=${q}${d}{${ov}pwd}${q}
     ${omv}newPwd=${q}${d}{1}${q}
+
     [[ ${d}{#${omv}newPwd} -gt 1 ]] && ${omv}newPwd=${q}${d}{${omv}newPwd%/}${q}
-  
     [[ -z ${q}${d}{${omv}newPwd}${q} ]] && ${omv}newPwd=${q}${d}(pwd)${q}
     
     [[ ${q}${d}{${ov}pwd}${q} != ${q}${d}{${omv}newPwd}${q} ]] && {
@@ -2683,7 +2353,7 @@ setPwd {
       else
         ${ov}pwd=${d}(pwd)
       fi
-      ${o}.updateList
+      [[ -n ${q}${d}{${omv}oldPwd}${q} ]] && ${o}.updateList
     }
   "
 }
@@ -2703,6 +2373,9 @@ m=movePwdUp
 omv=${o}_mv_${m}_
 eval "function ${o}.${m} {
   ${o}.setPwd ${q}${d}(cd ${q}${d}{${ov}pwd}/..${q};pwd)${q}
+  ${o}.updateList
+
+  [[ \"\${FUNCNAME[1]##*.}\" = \"runEventAction\" ]] && ${o}.refresh
 }"
 #[cf]
 #[of]:  public settable object data
