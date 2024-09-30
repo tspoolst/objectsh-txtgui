@@ -1,9 +1,5 @@
 #!/bin/bash
 #[of]:comments
-#[of]:window management
-#[c]need to be able to dynamically resize/reposition all windows/controls on screen
-#[c]ability to drag and drop windows
-#[cf]
 #[of]:mouse movements
 #[c]mouse drag and drop
 #[c]on mouse down record object and position of down event
@@ -588,6 +584,7 @@ function ${c}.trimString {
 #[of]:    class data
 
 #[cf]
+    ${o}.calcScreenSize
   "
 }
 #[cf]
@@ -616,7 +613,7 @@ open {
 
     ${ov}state=open
 
-    ${o}.getScreenSize
+    ${o}.calcScreenSize
     ${o}.focusListBuild
     ${o}.focusTriggerFocusEvent enter
     clear
@@ -660,9 +657,7 @@ open {
             continue
 #[cf]
           }
-#[of]:          handle shift prefix
           [[ ${q}${d}{${omv}key}${q} == '[1' ]] && read -s -N 3 -r -t .1 ${omv}key
-#[cf]
           case ${q}${d}{${omv}key}${q} in
 #[of]:            mouse
             '[<')
@@ -817,26 +812,6 @@ open {
               ${omv}key=altRight
               ;;&
 #[cf]
-#[of]:            altShift up)
-            ';4A')
-              ${omv}key=altShiftUp
-              ;;&
-#[cf]
-#[of]:            altShift down)
-            ';4B')
-              ${omv}key=altShiftDown
-              ;;&
-#[cf]
-#[of]:            altShift left)
-            ';4D')
-              ${omv}key=altShiftLeft
-              ;;&
-#[cf]
-#[of]:            altShift right)
-            ';4C')
-              ${omv}key=altShiftRight
-              ;;&
-#[cf]
 #[of]:            ctrl up)
             ';5A')
               ${omv}key=ctrlUp
@@ -877,42 +852,20 @@ open {
               ${omv}key=right
               ;;&
 #[cf]
-#[of]:            home)
-            '[H')
-              ${omv}key=home
-              ;;&
-#[cf]
-#[of]:            end)
-            '[F')
-              ${omv}key=end
-              ;;&
-#[cf]
 #[of]:            shift tab)
             '[Z')
               ${omv}key=shiftTab
               ;;&
 #[cf]
-#[of]:            insert)
-            '[2')
-              read -s -N 1 -r -t .1 ${omv}key
-              [[ ${q}${d}{${omv}key}${q} = '~' ]] && ${omv}key=insert
-              ;;&
-#[cf]
-#[of]:            delete)
-            '[3')
-              read -s -N 1 -r -t .1 ${omv}key
-              [[ ${q}${d}{${omv}key}${q} = '~' ]] && ${omv}key=delete
-              ;;&
-#[cf]
 #[of]:            page up)
             '[5')
-              read -s -N 1 -r -t .1 ${omv}key
+              read -s -N 1 -r ${omv}key
               [[ ${q}${d}{${omv}key}${q} = '~' ]] && ${omv}key=pageUp
               ;;&
 #[cf]
 #[of]:            page down)
             '[6')
-              read -s -N 1 -r -t .1 ${omv}key
+              read -s -N 1 -r ${omv}key
               [[ ${q}${d}{${omv}key}${q} = '~' ]] && ${omv}key=pageDown
               ;;&
 #[cf]
@@ -948,7 +901,6 @@ open {
 #[cf]
 #[of]:        tick)
         '')
-          ##this is never called
           ;;
 #[cf]
 #[of]:        *)
@@ -1105,7 +1057,7 @@ processEvent {
               ${q}${d}{${omv}event}${q} \
               ${q}${d}{${omv}currentRelX}${q} ${q}${d}{${omv}currentRelY}${q} \
               ${q}${d}{${omv}mouseX}${q} ${q}${d}{${omv}mouseY}${q}
-            #${o}.getScreenSize
+            #${o}.calcScreenSize
             #${o}.refresh
             #${c}.mouseEnable
           else
@@ -1311,9 +1263,9 @@ EOF
 eval "eval \"function \${c}.\${${omv}method}\""
 #[cf]
 
-#[of]:  getscreensize {
+#[of]:  calcscreensize {
 IFS='' read -r -d '' ${omv}method <<'EOF'
-getScreenSize {
+calcScreenSize {
 #[of]:  set common environment
 #[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
   . ${gl_classpath}/classcommonenv.sh
@@ -1458,9 +1410,7 @@ printf -v ${ov}tickIntervalSeconds '%04d' ${q}${d}{${ov}tickInterval}${q}
 ${ov}tickIntervalSeconds=${q}${d}{${ov}tickIntervalSeconds%???}.${d}{${ov}tickIntervalSeconds#${d}{${ov}tickIntervalSeconds%???}}${q}
 
 newvar ${ov}refreshInterval
-${ov}refreshInterval=''
-
-${o}.getScreenSize
+${ov}refreshInterval=10
 
 #[cf]
   "
@@ -1804,7 +1754,7 @@ refresh {
 #[cf]
   eval "
     typeset ${omv}sliderLength ${omv}songLength ${omv}songTimePlayed
-    typeset ${omv}h ${omv}v ${omv}t ${omv}b ${omv}r ${omv}line
+    typeset ${omv}h ${omv}v ${omv}t ${omv}b ${omv}line
     [[ ${q}${d}2${q} != ${q}!${q} && -n ${q}${d}{2}${q} ]] && {
       ${ov}leftOffset=${q}${d}{1}${q}
       ${ov}topOffset=${q}${d}{2}${q}
@@ -1827,248 +1777,49 @@ refresh {
     fi
     ${omv}t='/\\\\'
     ${omv}b='\\\\/'
-    ${omv}r='#'
     
     ## set position only if not a direct sub-class call
     [ ${q}${c}${q} != ${q}${smc}${q} ] && {
+      typeset ${omv}sliderPositionPercentage
       if isset ${ov}positionUpdater && isfnset ${q}${d}{${ov}positionUpdater}${q} ; then
-        ${d}{${ov}positionUpdater} ${q}${ov}position${q}
+        ${d}{${ov}positionUpdater} ${q}${omv}sliderPositionPercentage${q}
+      else
+        ${omv}sliderPositionPercentage=50
       fi
     }
 
-
-
     ${o}.setcursorxy 0 0
     if ((${ov}width>${ov}height)) ; then
-#[of]:      display horizontal
-      ${omv}sliderLength=${d}((${ov}width-2))
-
-      typeset ${omv}barLength
-      typeset ${omv}barFirstHalf ${omv}barSecondHalf
-      if ((${ov}numberOfSteps<${omv}sliderLength)) && ((${omv}sliderLength/${ov}numberOfSteps>3)) ; then
-        typeset ${omv}barLengthFirstHalf ${omv}barLengthSecondHalf
-        
-        ${omv}barLength=${d}(((${omv}sliderLength)/${ov}numberOfSteps))
-        ${omv}barLengthFirstHalf=${d}((${omv}barLength-1-${omv}barLength/2))
-        ${omv}barLengthSecondHalf=${d}((${omv}barLength-2-${omv}barLengthFirstHalf))
-
-        printf -v ${omv}barFirstHalf ${q}%${d}{${omv}barLengthFirstHalf}s${q} ${q}${q}
-        printf -v ${omv}barSecondHalf ${q}%${d}{${omv}barLengthSecondHalf}s${q} ${q}${q}
-
-        ${omv}barFirstHalf=${q}${d}{${omv}barFirstHalf// /${d}{${omv}r}}${q}
-        ${omv}barSecondHalf=${q}${d}{${omv}barSecondHalf// /${d}{${omv}r}}${q}
-      else
-        ${omv}barLength=2
-      fi
-
-typeset ${omv}position ${omv}displayValue
-((${omv}position=${ov}position))
-((${omv}displayValue=${omv}position))
-if [[ -z ${q}${d}{${ov}zeroIndexed}${q} ]] ; then
-  ((${omv}position--))
-fi
-#${omv}position=50
+      ${omv}sliderLength=${d}((${ov}sliderLength-3))
 
       echo -n ${q}<${q}
-      if ((${ov}numberOfSteps>1)) ; then
-        typeset ${omv}lineLengthFirstHalf ${omv}lineLengthSecondHalf
-#[c]        ${omv}lineLengthFirstHalf=${d}(( (${omv}sliderLength-${omv}barLength)*${omv}position/(${ov}numberOfSteps-1) ))
-#[c]        ${omv}lineLengthFirstHalf=${d}(( (${omv}sliderLength-${omv}barLength)*(${omv}position+1)/(${ov}numberOfSteps)+1 ))
-        ${omv}lineLengthFirstHalf=${d}(( ((100*${omv}sliderLength*${omv}position/(${ov}numberOfSteps-1)/100)-(${omv}barLength)/2) ))
-        ((${omv}lineLengthFirstHalf<0)) && ${omv}lineLengthFirstHalf=0
-
-        ${omv}lineLengthSecondHalf=${d}(( ${omv}sliderLength-${omv}barLength-${omv}lineLengthFirstHalf ))
-        ((${omv}lineLengthSecondHalf<0)) && {
-          ${omv}lineLengthSecondHalf=0
-          ${omv}lineLengthFirstHalf=${d}((${omv}sliderLength-${omv}barLength))
-        }
-        
-        printf -v ${omv}line ${q}%${d}((${omv}lineLengthFirstHalf))s${q} ${q}${q}
-        echo -en ${q}${d}{${omv}line// /${d}{${omv}h}}${q}
-      fi
-
-#[c]    (( ${omv}displayValue=${ov}width*(${omv}position+1)/(${ov}numberOfSteps) ))
-
-      echo -n ${q}${d}{${omv}barFirstHalf}${q}
-      echo -n ${q}${d}(printf '%02d' ${q}${d}{${omv}displayValue#0}${q})${q}
-      echo -n ${q}${d}{${omv}barSecondHalf}${q}
+      printf -v ${omv}line ${q}%${d}(( ${omv}sliderPositionPercentage*${omv}sliderLength/100 ))s${q} ${q}${q}
+      echo -en ${q}${d}{${omv}line// /${d}{${omv}h}}${q}
   
-      if ((${ov}numberOfSteps>1)) ; then
-        printf -v ${omv}line ${q}%${d}((${omv}lineLengthSecondHalf))s${q} ${q}${q}
-        echo -en ${q}${d}{${omv}line// /${d}{${omv}h}}${q}
-      fi
-      echo -n ${q}>${q}
-
-
-return
-
-
-      typeset ${omv}barLength
-      typeset ${omv}barFirstHalf ${omv}barSecondHalf
-#[c]      if ((${ov}numberOfSteps<${omv}sliderLength)) && ((${omv}sliderLength/${ov}numberOfSteps>2)) ; then
-#[c]        typeset ${omv}barLengthFirstHalf ${omv}barLengthSecondHalf
-#[c]        
-#[c]        ${omv}barLength=${d}((${omv}sliderLength/${ov}numberOfSteps))
-#[c]        ${omv}barLengthFirstHalf=${d}((${omv}barLength/2))
-#[c]        ${omv}barLengthSecondHalf=${d}((${omv}barLength-${omv}barLengthFirstHalf))
-#[c]        ${omv}barLength=${d}((${omv}barLengthFirstHalf+${omv}barLengthSecondHalf))
-#[c]        ${omv}sliderLength=${d}((${omv}sliderLength-${omv}barLength))
-#[c]
-#[c]        printf -v ${omv}barFirstHalf ${q}%${d}{${omv}barLengthFirstHalf}s${q} ${q}${q}
-#[c]        printf -v ${omv}barSecondHalf ${q}%${d}{${omv}barLengthSecondHalf}s${q} ${q}${q}
-#[c]
-#[c]        ${omv}barFirstHalf=${q}${d}{${omv}barFirstHalf// /${d}{${omv}r}}${q}
-#[c]        ${omv}barSecondHalf=${q}${d}{${omv}barSecondHalf// /${d}{${omv}r}}${q}
-#[c]      fi
-
-typeset ${omv}position ${omv}displayValue
-((${omv}position=${ov}position))
-#[c]((${omv}displayValue=${ov}width*(${omv}position+1)/${ov}numberOfSteps))
-((${omv}displayValue=${omv}position))
-if [[ -z ${q}${d}{${ov}zeroIndexed}${q} ]] ; then
-  ((${omv}position--))
-fi
-
-      echo -n ${q}<${q}
-      if ((${ov}numberOfSteps>1)) ; then
-        typeset ${omv}lineLengthFirstHalf
-#[c]        ${omv}lineLengthFirstHalf=${d}(( ${omv}sliderLength*(${omv}position-1)/${ov}numberOfSteps ))
-        ${omv}lineLengthFirstHalf=${d}((${omv}sliderLength*${omv}position/${ov}numberOfSteps))
-#[c]        printf -v ${omv}line ${q}%${d}(( 100*(${omv}position-1)/(${ov}numberOfSteps-1)*${omv}sliderLength/100 ))s${q} ${q}${q}
-        printf -v ${omv}line ${q}%${d}((${omv}lineLengthFirstHalf-2))s${q} ${q}${q}
-        echo -en ${q}${d}{${omv}line// /${d}{${omv}h}}${q}
-      fi
-
-      echo -n ${q}${d}{${omv}barFirstHalf}${q}
-#[c]      echo -n ${q}${d}(printf '%02d%%' ${q}${d}{${omv}position#0}${q})${q}
-      echo -n ${q}${d}(printf '%02d' ${q}${d}{${omv}displayValue#0}${q})${q}
-#[c]      echo -n ${q}${d}(printf '%02d' ${q}${d}(( ${omv}sliderLength*(${omv}position-1)/(${ov}numberOfSteps-1) ))${q})${q}
-      echo -n ${q}${d}{${omv}barSecondHalf}${q}
+      echo -n ${q}${d}(printf '%02d%%' ${q}${d}{${omv}sliderPositionPercentage#0}${q})${q}
   
-      if ((${ov}numberOfSteps>1)) ; then
-#[c]        printf -v ${omv}line ${q}%${d}(( ${omv}sliderLength-(100*(${omv}position-1)/(${ov}numberOfSteps-1)*${omv}sliderLength/100) ))s${q} ${q}${q}
-        printf -v ${omv}line ${q}%${d}((${omv}sliderLength-${omv}lineLengthFirstHalf-2))s${q} ${q}${q}
-        echo -en ${q}${d}{${omv}line// /${d}{${omv}h}}${q}
-      fi
+      printf -v ${omv}line ${q}%${d}(( ${omv}sliderLength-(${omv}sliderPositionPercentage*${omv}sliderLength/100) ))s${q} ${q}${q}
+      echo -en ${q}${d}{${omv}line// /${d}{${omv}h}}${q}
       echo -n ${q}>${q}
-#[c]
-#[c]0-100
-#[c]
-#[c]205
-#[c]0-204
-#[c]
-#[c]102/204=50
-#[c]
-#[c]1+203+1
-#[c]echo ${d}(( 1+(102-2)+2+(101-1)+1 ))
-#[c]a=${d}(( ((100*203*50/10000)-2) ));b=${d}(( ((203-a-2)+0) ));echo ${d}a ${d}b ${d}((a+2+b))
-#[cf]
     else
-#[of]:      display verticle
-      ${omv}sliderLength=${d}((${ov}height-2))
-
-#[c]((${ov}numberOfSteps>1)) && {
-#[c]  set -xv
-#[c]  echo ${d}{${ov}numberOfSteps} ${d}{${omv}sliderLength}
-#[c]}
-
-      typeset ${omv}barLength
-      typeset ${omv}barFirstHalf ${omv}barSecondHalf
-      if ((${ov}numberOfSteps<${omv}sliderLength)) && ((${omv}sliderLength/${ov}numberOfSteps>2)) ; then
-        typeset ${omv}barLengthFirstHalf ${omv}barLengthSecondHalf
-        
-        ${omv}barLength=${d}(((${omv}sliderLength)/${ov}numberOfSteps))
-        ${omv}barLengthFirstHalf=${d}((${omv}barLength-1-${omv}barLength/2))
-        ${omv}barLengthSecondHalf=${d}((${omv}barLength-1-${omv}barLengthFirstHalf))
-
-        printf -v ${omv}barFirstHalf ${q}%${d}{${omv}barLengthFirstHalf}s${q} ${q}${q}
-        printf -v ${omv}barSecondHalf ${q}%${d}{${omv}barLengthSecondHalf}s${q} ${q}${q}
-
-        ${omv}barFirstHalf=${q}${d}{${omv}barFirstHalf// /${d}{${omv}r}${d}{${omv}r}\\\\e[D\\\\e[D\\\\e[B}${q}
-        ${omv}barSecondHalf=${q}${d}{${omv}barSecondHalf// /${d}{${omv}r}${d}{${omv}r}\\\\e[D\\\\e[D\\\\e[B}${q}
-      else
-        ${omv}barLength=1
-      fi
-
-#[c]((${ov}numberOfSteps>1)) && {
-#[c]  screen.mouseDisable;screen.cursorEnable;exit
-#[c]}
-typeset ${omv}position ${omv}displayValue
-((${omv}position=${ov}position))
-((${omv}displayValue=${omv}position))
-if [[ -z ${q}${d}{${ov}zeroIndexed}${q} ]] ; then
-  ((${omv}position--))
-fi
+      ${omv}sliderLength=${d}((${ov}sliderLength-1))
 
       echo -en ${q}${d}{${omv}t}\\\\e[D\\\\e[D\\\\e[B${q}
-
-#[c]      if ((${ov}numberOfSteps>1)) ; then
-#[c]        typeset ${omv}lineLengthFirstHalf
-#[c]        ${omv}lineLengthFirstHalf=${d}(( (${omv}sliderLength-${omv}barLength)*${omv}position/(${ov}numberOfSteps-1) ))
-#[c]        printf -v ${omv}line ${q}%${d}((${omv}lineLengthFirstHalf))s${q} ${q}${q}
-#[c]        echo -en ${q}${d}{${omv}line// /${d}{${omv}v}\\\\e[D\\\\e[D\\\\e[B}${q}
-#[c]      fi
-      if ((${ov}numberOfSteps>1)) ; then
-        typeset ${omv}lineLengthFirstHalf ${omv}lineLengthSecondHalf
-        ${omv}lineLengthFirstHalf=${d}(( ((100*${omv}sliderLength*${omv}position/(${ov}numberOfSteps-1)/100)-(${omv}barLength)/2) ))
-        ((${omv}lineLengthFirstHalf<0)) && ${omv}lineLengthFirstHalf=0
-
-        ${omv}lineLengthSecondHalf=${d}(( ${omv}sliderLength-${omv}barLength-${omv}lineLengthFirstHalf ))
-        ((${omv}lineLengthSecondHalf<0)) && {
-          ${omv}lineLengthSecondHalf=0
-          ${omv}lineLengthFirstHalf=${d}((${omv}sliderLength-${omv}barLength))
-        }
-        
-        printf -v ${omv}line ${q}%${d}((${omv}lineLengthFirstHalf))s${q} ${q}${q}
-        echo -en ${q}${d}{${omv}line// /${d}{${omv}v}\\\\e[D\\\\e[D\\\\e[B}${q}
-      fi
-
-      echo -en ${q}${d}{${omv}barFirstHalf}${q}
-      echo -en ${q}${d}(printf '%02d' ${q}${d}{${omv}displayValue#0}${q})\\\\e[D\\\\e[D\\\\e[B${q}
-      echo -en ${q}${d}{${omv}barSecondHalf}${q}
+      printf -v ${omv}line ${q}%${d}(( ${omv}sliderPositionPercentage*${omv}sliderLength/100 ))s${q} ${q}${q}
+      echo -en ${q}${d}{${omv}line// /${d}{${omv}v}\\\\e[D\\\\e[D\\\\e[B}${q}
   
-      if ((${ov}numberOfSteps>1)) ; then
-        printf -v ${omv}line ${q}%${d}((${omv}lineLengthSecondHalf))s${q} ${q}${q}
-#[c]        printf -v ${omv}line ${q}%${d}(( ${omv}sliderLength-${omv}barLength-${omv}lineLengthFirstHalf ))s${q} ${q}${q}
-        echo -en ${q}${d}{${omv}line// /${d}{${omv}v}\\\\e[D\\\\e[D\\\\e[B}${q}
+#[c]      echo -en ${q}${d}{${omv}b}\\\\e[D\\\\e[D\\\\e[B${q}
+      if [[ ${q}${d}{${omv}sliderPositionPercentage#0}${q} = 100 ]] ; then
+        echo -en ${q}^^\\\\e[D\\\\e[D\\\\e[B${q}
+      else
+        echo -en ${q}${d}(printf '%02d' ${q}${d}{${omv}sliderPositionPercentage#0}${q})\\\\e[D\\\\e[D\\\\e[B${q}
       fi
-      echo -en ${q}${d}{${omv}b}${q}
-#[cf]
-    fi
-
-    return
-
-
-#[c]    ${o}.setcursorxy 0 0
-#[c]    if ((${ov}width>${ov}height)) ; then
-#[c]      ${omv}sliderLength=${d}((${ov}width-2-3))
-#[c]
-#[c]      echo -n ${q}<${q}
-#[c]      printf -v ${omv}line ${q}%${d}(( ${ov}position*${omv}sliderLength/100 ))s${q} ${q}${q}
-#[c]      echo -en ${q}${d}{${omv}line// /${d}{${omv}h}}${q}
-#[c]  
-#[c]      echo -n ${q}${d}(printf '%02d%%' ${q}${d}{${ov}position#0}${q})${q}
-#[c]  
-#[c]      printf -v ${omv}line ${q}%${d}(( ${omv}sliderLength-(${ov}position*${omv}sliderLength/100) ))s${q} ${q}${q}
-#[c]      echo -en ${q}${d}{${omv}line// /${d}{${omv}h}}${q}
-#[c]      echo -n ${q}>${q}
-#[c]    else
-#[c]      ${omv}sliderLength=${d}((${ov}height-2-1))
-#[c]
 #[c]      echo -en ${q}${d}{${omv}t}\\\\e[D\\\\e[D\\\\e[B${q}
-#[c]      printf -v ${omv}line ${q}%${d}(( ${ov}position*${omv}sliderLength/100 ))s${q} ${q}${q}
-#[c]      echo -en ${q}${d}{${omv}line// /${d}{${omv}v}\\\\e[D\\\\e[D\\\\e[B}${q}
-#[c]
-#[c]      if [[ ${q}${d}{${ov}position#0}${q} = 100 ]] ; then
-#[c]        echo -en ${q}^^\\\\e[D\\\\e[D\\\\e[B${q}
-#[c]      else
-#[c]        echo -en ${q}${d}(printf '%02d' ${q}${d}{${ov}position#0}${q})\\\\e[D\\\\e[D\\\\e[B${q}
-#[c]      fi
-#[c]
-#[c]      printf -v ${omv}line ${q}%${d}(( ${omv}sliderLength-(${ov}position*${omv}sliderLength/100) ))s${q} ${q}${q}
-#[c]      echo -en ${q}${d}{${omv}line// /${d}{${omv}v}\\\\e[D\\\\e[D\\\\e[B}${q}
-#[c]      echo -en ${q}${d}{${omv}b}${q}
-#[c]    fi
+  
+      printf -v ${omv}line ${q}%${d}(( ${omv}sliderLength-(${omv}sliderPositionPercentage*${omv}sliderLength/100) ))s${q} ${q}${q}
+      echo -en ${q}${d}{${omv}line// /${d}{${omv}v}\\\\e[D\\\\e[D\\\\e[B}${q}
+      echo -en ${q}${d}{${omv}b}${q}
+    fi
   "
 }
 EOF
@@ -2091,14 +1842,18 @@ buildSlider {
 
     if ((${ov}width>${ov}height)) ; then
       printf -v ${ov}sliderFilled %${d}((${ov}width-2))s ${q}${q}
+      ${ov}sliderLength=${d}{#${ov}sliderFilled}
+
       ${ov}sliderErase=${q}${d}{${ov}sliderFilled// /\\\\b}\\b\\b${q}
       ${ov}sliderFocused=${q}${d}{${ov}sliderFilled// /\\~}${q}
       ${ov}sliderFilled=${q}${d}{${ov}sliderFilled// /-}${q}
     else
       printf -v ${ov}sliderFilled %${d}((${ov}height-2))s ${q}${q}
+      ${ov}sliderLength=${d}{#${ov}sliderFilled}
+
       ${ov}sliderErase=${q}${d}{${ov}sliderFilled// /\\\\e[B\\\\e[D\\\\b}${q}
-      ${ov}sliderFocused=${q}${d}{${omv}sliderFilled// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}
-      ${ov}sliderFilled=${q}${d}{${omv}sliderFilled// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}
+      ${ov}sliderFocused=${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}
+      ${ov}sliderFilled=${q}${d}{${omv}line// /\\\\e[B\\\\e[D${d}{${omv}v}}${q}
     fi
   "
 }
@@ -2118,7 +1873,7 @@ m=setWidth
 omv=${o}_mv_${m}_
 eval "function ${o}.${m} {
   ${ov}width=${q}${d}1${q}
-#[c]  ${o}.buildSlider
+  ${o}.buildSlider
 }"
 #[cf]
 #[of]:  setHeight
@@ -2126,24 +1881,20 @@ m=setHeight
 omv=${o}_mv_${m}_
 eval "function ${o}.${m} {
   ${ov}height=${q}${d}1${q}
-#[c]  ${o}.buildSlider
+  ${o}.buildSlider
 }"
 #[cf]
 #[of]:  public settable object data
-  newPublicVar position positionUpdater numberOfSteps zeroIndexed
+  newPublicVar positionUpdater
 #[cf]
   eval "
 #[of]:    object data
-newvar ${ov}sliderFilled ${ov}sliderErase ${ov}sliderFocused
+newvar ${ov}sliderFilled ${ov}sliderErase ${ov}sliderFocused ${ov}sliderLength
 
 ${ov}width=${q}${d}{1:-20}${q}
 ${ov}height=${q}${d}{2:-1}${q}
-${ov}numberOfSteps=${q}${d}{3:-100}${q}
-${ov}position=${q}${d}{4:-50}${q}
-
-#[c]${o}.buildSlider
-
 #[cf]
+    ${o}.buildSlider
   "
 }
 #[cf]
@@ -2219,9 +1970,12 @@ updateList {
   eval "
     typeset ${omv}entry
 
-    if isset ${ov}updateListEventCallout && isfnset ${q}${d}{${ov}updateListEventCallout}${q} ; then
-      ${d}{${ov}updateListEventCallout} ${q}${ov}entryList${q}
-    fi
+    ## fill list only if not a direct sub-class call
+    [ ${q}${c}${q} != ${q}${smc}${q} ] && {
+      if isset ${ov}listUpdater && isfnset ${q}${d}{${ov}listUpdater}${q} ; then
+        ${d}{${ov}listUpdater} ${q}${ov}entryList${q}
+      fi
+    }
 
     ## trim the list only if buildTrimmedEntryList (default)=true
     ${d}{${ov}buildTrimmedEntryList} && {
@@ -2378,48 +2132,6 @@ eval "eval \"function \${c}.\${${omv}method}\""
 #[c]${ov}height
 #[c]
 #[cf]
-#[of]:  getPageTotal {
-IFS='' read -r -d '' ${omv}method <<'EOF'
-getPageTotal {
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-    ${ov}pageTotal=${d}((${d}{#${ov}entryList[@]}/${ov}height))
-    ((${d}{#${ov}entryList[@]}%${ov}height)) && ((${ov}pageTotal++))
-
-    if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
-      echo ${d}{${ov}pageTotal}
-    else
-      eval ${q}${d}1=\\${d}{${ov}pageTotal}${q}
-    fi
-  "
-}
-EOF
-eval "eval \"function \${c}.\${${omv}method}\""
-#[cf]
-#[of]:  getPageCurrent {
-IFS='' read -r -d '' ${omv}method <<'EOF'
-getPageCurrent {
-#[of]:  set common environment
-#[l]:classcommonenv.sh:/usr/lib/objectsh-1/common/classcommonenv.sh
-  . ${gl_classpath}/classcommonenv.sh
-#[cf]
-  eval "
-    ${ov}pageCurrent=${d}(( (${ov}entryListIndexOffset+1)/${ov}height+1 ))
-    (( (${ov}entryListIndexOffset+1)%${ov}height)) && ((${ov}pageTotal++))
-
-    if [[ ${q}${d}1${q} = ${q}-${q} ]] ; then
-      echo ${d}{${ov}pageCurrent}
-    else
-      eval ${q}${d}1=\\${d}{${ov}pageCurrent}${q}
-    fi
-  "
-}
-EOF
-eval "eval \"function \${c}.\${${omv}method}\""
-#[cf]
 #[of]:  setEntryList {
 IFS='' read -r -d '' ${omv}method <<'EOF'
 setEntryList {
@@ -2489,7 +2201,7 @@ eval "function ${o}.${m} {
 }"
 #[cf]
 #[of]:  public settable object data
-  newPublicVar updateListEventCallout
+  newPublicVar listUpdater
 #[cf]
   eval "
 #[of]:    object data
@@ -2505,12 +2217,13 @@ if [[ ${q}${c}${q} = ${q}listBox${q} ]] ; then
     ${ov}entryList=( ${q}${d}{@:3}${q} )
   else
     ## default entries for new object with undefined list
-    ${ov}entryList=( ${q}need to apply the setUpdateListEventCallout method${q} ${q}or call the setEntryList method${q} ${q}sample 1${q} ${q}sample 2${q} ${q}sample 3${q} ${q}sample 4${q} )
+    ${ov}entryList=( ${q}need to set a ListUpdater method${q} ${q}or call the setEntryList method${q} ${q}sample 1${q} ${q}sample 2${q} ${q}sample 3${q} ${q}sample 4${q} )
   fi
   ${o}.updateList
 fi
 
 #[cf]
+#[c]    ${o}.updateList
   "
 }
 #[cf]
@@ -2722,6 +2435,7 @@ eval "function ${o}.${m} {
 (($#>2)) && ${o}.setPwd ${q}${d}{3:-${d}(pwd)}${q}
 
 #[cf]
+#[c]    ${o}.updateList
   "
 }
 #[cf]
