@@ -1861,19 +1861,17 @@ refresh {
         ${omv}barLength=2
       fi
 
-typeset ${omv}position ${omv}displayValue
-((${omv}position=${ov}position))
-((${omv}displayValue=${omv}position))
-if [[ -z ${q}${d}{${ov}zeroIndexed}${q} ]] ; then
-  ((${omv}position--))
-fi
-#${omv}position=50
 
-      echo -n ${q}<${q}
+      typeset ${omv}position ${omv}displayValue
+      ((${omv}position=${ov}position))
+      ((${omv}displayValue=${omv}position))
+      if [[ -z ${q}${d}{${ov}zeroIndexed}${q} ]] ; then
+        ((${omv}position--))
+      fi
+
+      echo -en ${q}<${q}
       if ((${ov}numberOfSteps>1)) ; then
         typeset ${omv}lineLengthFirstHalf ${omv}lineLengthSecondHalf
-#[c]        ${omv}lineLengthFirstHalf=${d}(( (${omv}sliderLength-${omv}barLength)*${omv}position/(${ov}numberOfSteps-1) ))
-#[c]        ${omv}lineLengthFirstHalf=${d}(( (${omv}sliderLength-${omv}barLength)*(${omv}position+1)/(${ov}numberOfSteps)+1 ))
         ${omv}lineLengthFirstHalf=${d}(( ((100*${omv}sliderLength*${omv}position/(${ov}numberOfSteps-1)/100)-(${omv}barLength)/2) ))
         ((${omv}lineLengthFirstHalf<0)) && ${omv}lineLengthFirstHalf=0
 
@@ -1887,90 +1885,19 @@ fi
         echo -en ${q}${d}{${omv}line// /${d}{${omv}h}}${q}
       fi
 
-#[c]    (( ${omv}displayValue=${ov}width*(${omv}position+1)/(${ov}numberOfSteps) ))
-
-      echo -n ${q}${d}{${omv}barFirstHalf}${q}
-      echo -n ${q}${d}(printf '%02d' ${q}${d}{${omv}displayValue#0}${q})${q}
-      echo -n ${q}${d}{${omv}barSecondHalf}${q}
+      echo -en ${q}${d}{${omv}barFirstHalf}${q}
+      echo -en ${q}${d}(printf '%02d' ${q}${d}{${omv}displayValue#0}${q})${q}
+      echo -en ${q}${d}{${omv}barSecondHalf}${q}
   
       if ((${ov}numberOfSteps>1)) ; then
         printf -v ${omv}line ${q}%${d}((${omv}lineLengthSecondHalf))s${q} ${q}${q}
         echo -en ${q}${d}{${omv}line// /${d}{${omv}h}}${q}
       fi
-      echo -n ${q}>${q}
-
-
-return
-
-
-      typeset ${omv}barLength
-      typeset ${omv}barFirstHalf ${omv}barSecondHalf
-#[c]      if ((${ov}numberOfSteps<${omv}sliderLength)) && ((${omv}sliderLength/${ov}numberOfSteps>2)) ; then
-#[c]        typeset ${omv}barLengthFirstHalf ${omv}barLengthSecondHalf
-#[c]        
-#[c]        ${omv}barLength=${d}((${omv}sliderLength/${ov}numberOfSteps))
-#[c]        ${omv}barLengthFirstHalf=${d}((${omv}barLength/2))
-#[c]        ${omv}barLengthSecondHalf=${d}((${omv}barLength-${omv}barLengthFirstHalf))
-#[c]        ${omv}barLength=${d}((${omv}barLengthFirstHalf+${omv}barLengthSecondHalf))
-#[c]        ${omv}sliderLength=${d}((${omv}sliderLength-${omv}barLength))
-#[c]
-#[c]        printf -v ${omv}barFirstHalf ${q}%${d}{${omv}barLengthFirstHalf}s${q} ${q}${q}
-#[c]        printf -v ${omv}barSecondHalf ${q}%${d}{${omv}barLengthSecondHalf}s${q} ${q}${q}
-#[c]
-#[c]        ${omv}barFirstHalf=${q}${d}{${omv}barFirstHalf// /${d}{${omv}r}}${q}
-#[c]        ${omv}barSecondHalf=${q}${d}{${omv}barSecondHalf// /${d}{${omv}r}}${q}
-#[c]      fi
-
-typeset ${omv}position ${omv}displayValue
-((${omv}position=${ov}position))
-#[c]((${omv}displayValue=${ov}width*(${omv}position+1)/${ov}numberOfSteps))
-((${omv}displayValue=${omv}position))
-if [[ -z ${q}${d}{${ov}zeroIndexed}${q} ]] ; then
-  ((${omv}position--))
-fi
-
-      echo -n ${q}<${q}
-      if ((${ov}numberOfSteps>1)) ; then
-        typeset ${omv}lineLengthFirstHalf
-#[c]        ${omv}lineLengthFirstHalf=${d}(( ${omv}sliderLength*(${omv}position-1)/${ov}numberOfSteps ))
-        ${omv}lineLengthFirstHalf=${d}((${omv}sliderLength*${omv}position/${ov}numberOfSteps))
-#[c]        printf -v ${omv}line ${q}%${d}(( 100*(${omv}position-1)/(${ov}numberOfSteps-1)*${omv}sliderLength/100 ))s${q} ${q}${q}
-        printf -v ${omv}line ${q}%${d}((${omv}lineLengthFirstHalf-2))s${q} ${q}${q}
-        echo -en ${q}${d}{${omv}line// /${d}{${omv}h}}${q}
-      fi
-
-      echo -n ${q}${d}{${omv}barFirstHalf}${q}
-#[c]      echo -n ${q}${d}(printf '%02d%%' ${q}${d}{${omv}position#0}${q})${q}
-      echo -n ${q}${d}(printf '%02d' ${q}${d}{${omv}displayValue#0}${q})${q}
-#[c]      echo -n ${q}${d}(printf '%02d' ${q}${d}(( ${omv}sliderLength*(${omv}position-1)/(${ov}numberOfSteps-1) ))${q})${q}
-      echo -n ${q}${d}{${omv}barSecondHalf}${q}
-  
-      if ((${ov}numberOfSteps>1)) ; then
-#[c]        printf -v ${omv}line ${q}%${d}(( ${omv}sliderLength-(100*(${omv}position-1)/(${ov}numberOfSteps-1)*${omv}sliderLength/100) ))s${q} ${q}${q}
-        printf -v ${omv}line ${q}%${d}((${omv}sliderLength-${omv}lineLengthFirstHalf-2))s${q} ${q}${q}
-        echo -en ${q}${d}{${omv}line// /${d}{${omv}h}}${q}
-      fi
-      echo -n ${q}>${q}
-#[c]
-#[c]0-100
-#[c]
-#[c]205
-#[c]0-204
-#[c]
-#[c]102/204=50
-#[c]
-#[c]1+203+1
-#[c]echo ${d}(( 1+(102-2)+2+(101-1)+1 ))
-#[c]a=${d}(( ((100*203*50/10000)-2) ));b=${d}(( ((203-a-2)+0) ));echo ${d}a ${d}b ${d}((a+2+b))
+      echo -en ${q}>${q}
 #[cf]
     else
 #[of]:      display verticle
       ${omv}sliderLength=${d}((${ov}height-2))
-
-#[c]((${ov}numberOfSteps>1)) && {
-#[c]  set -xv
-#[c]  echo ${d}{${ov}numberOfSteps} ${d}{${omv}sliderLength}
-#[c]}
 
       typeset ${omv}barLength
       typeset ${omv}barFirstHalf ${omv}barSecondHalf
@@ -1990,24 +1917,15 @@ fi
         ${omv}barLength=1
       fi
 
-#[c]((${ov}numberOfSteps>1)) && {
-#[c]  screen.mouseDisable;screen.cursorEnable;exit
-#[c]}
-typeset ${omv}position ${omv}displayValue
-((${omv}position=${ov}position))
-((${omv}displayValue=${omv}position))
-if [[ -z ${q}${d}{${ov}zeroIndexed}${q} ]] ; then
-  ((${omv}position--))
-fi
+
+      typeset ${omv}position ${omv}displayValue
+      ((${omv}position=${ov}position))
+      ((${omv}displayValue=${omv}position))
+      if [[ -z ${q}${d}{${ov}zeroIndexed}${q} ]] ; then
+        ((${omv}position--))
+      fi
 
       echo -en ${q}${d}{${omv}t}\\\\e[D\\\\e[D\\\\e[B${q}
-
-#[c]      if ((${ov}numberOfSteps>1)) ; then
-#[c]        typeset ${omv}lineLengthFirstHalf
-#[c]        ${omv}lineLengthFirstHalf=${d}(( (${omv}sliderLength-${omv}barLength)*${omv}position/(${ov}numberOfSteps-1) ))
-#[c]        printf -v ${omv}line ${q}%${d}((${omv}lineLengthFirstHalf))s${q} ${q}${q}
-#[c]        echo -en ${q}${d}{${omv}line// /${d}{${omv}v}\\\\e[D\\\\e[D\\\\e[B}${q}
-#[c]      fi
       if ((${ov}numberOfSteps>1)) ; then
         typeset ${omv}lineLengthFirstHalf ${omv}lineLengthSecondHalf
         ${omv}lineLengthFirstHalf=${d}(( ((100*${omv}sliderLength*${omv}position/(${ov}numberOfSteps-1)/100)-(${omv}barLength)/2) ))
@@ -2029,7 +1947,6 @@ fi
   
       if ((${ov}numberOfSteps>1)) ; then
         printf -v ${omv}line ${q}%${d}((${omv}lineLengthSecondHalf))s${q} ${q}${q}
-#[c]        printf -v ${omv}line ${q}%${d}(( ${omv}sliderLength-${omv}barLength-${omv}lineLengthFirstHalf ))s${q} ${q}${q}
         echo -en ${q}${d}{${omv}line// /${d}{${omv}v}\\\\e[D\\\\e[D\\\\e[B}${q}
       fi
       echo -en ${q}${d}{${omv}b}${q}
